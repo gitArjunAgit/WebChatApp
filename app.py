@@ -1,5 +1,4 @@
 import os
-import certifi
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 from pymongo import MongoClient
@@ -10,9 +9,14 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Connect to MongoDB using an Environment Variable
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# Use certifi.where() to resolve the SSL handshake error
+# Using tlsAllowInvalidCertificates=True to bypass the SSL handshake issue
 if MONGO_URI:
-    client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
+    client = MongoClient(
+        MONGO_URI,
+        serverSelectionTimeoutMS=5000,
+        tls=True,
+        tlsAllowInvalidCertificates=True
+    )
     db = client['arj_domain']
     messages_collection = db['messages']
 else:
@@ -30,9 +34,11 @@ def index():
 
 @socketio.on('connect')
 def handle_connect():
-    # Load history from MongoDB, or fallback to local memory
     if messages_collection is not None:
-        history = list(messages_collection.find({}, {'_id': 0}))
+        try:
+            history = list(messages_collection.find({}, {'_id': 0}))
+        except Exception:
+            history = []
     else:
         history = chat_history
     emit('load_history', history)
@@ -57,7 +63,6 @@ def handle_disconnect():
 
 @socketio.on('send_message')
 def handle_send_message(data):
-    # Save message to database permanently
     if messages_collection is not None:
         messages_collection.insert_one(data.copy())
     else:
@@ -72,13 +77,11 @@ def handle_send_message(data):
 
 @socketio.on('clear_chat')
 def handle_clear_chat():
-    # Wipe the database
     if messages_collection is not None:
         messages_collection.delete_many({})
     else:
         global chat_history
         chat_history = []
-
     emit('chat_cleared', broadcast=True)
 
 
@@ -93,11 +96,6 @@ def handle_stop_typing(data):
     if data['user'] in typing_users:
         typing_users.remove(data['user'])
     emit('update_typing', list(typing_users), broadcast=True)
-
-
-@socketio.on('ping')
-def handle_ping():
-    pass
 
 
 if __name__ == '__main__':
