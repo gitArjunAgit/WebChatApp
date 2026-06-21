@@ -17,6 +17,7 @@
             overflow-x: hidden;
         }
 
+        /* Upgraded dense star layer */
         .stars-layer {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -26,8 +27,15 @@
                 radial-gradient(1.5px 1.5px at 115px 190px, #fff, rgba(0,0,0,0)),
                 radial-gradient(2px 2px at 210px 100px, #f6d365, rgba(0,0,0,0)),
                 radial-gradient(1px 1px at 340px 280px, #fff, rgba(0,0,0,0)),
-                radial-gradient(2px 2px at 450px 420px, #fda085, rgba(0,0,0,0));
-            background-size: 500px 500px;
+                radial-gradient(2px 2px at 450px 420px, #fda085, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 50px 150px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 90px 40px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 180px 300px, #fff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 280px 80px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1px 1px at 390px 170px, #fff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 420px 330px, #fff, rgba(0,0,0,0));
+            /* Shrunk background size repeats the stars closer together */
+            background-size: 300px 300px;
         }
 
         #chat-container {
@@ -68,6 +76,14 @@
             background: rgba(255, 255, 255, 0.03);
             border-radius: 12px;
             line-height: 1.5;
+        }
+
+        /* New timestamp style */
+        .timestamp {
+            font-size: 0.75em;
+            color: rgba(255, 255, 255, 0.4);
+            margin-right: 10px;
+            font-family: monospace;
         }
 
         .username {
@@ -157,10 +173,14 @@
     const brightColors = ["#f6d365", "#38bdf8", "#4ade80", "#f43f5e", "#c084fc", "#fb923c"];
     const myColor = brightColors[Math.floor(Math.random() * brightColors.length)];
 
-    // Helper to draw messages safely
     function appendMessage(data) {
         const msgLine = document.createElement('div');
         msgLine.className = 'message-line';
+
+        // Add the new timestamp logic
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'timestamp';
+        timeSpan.textContent = data.time ? `[${data.time}]` : '';
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'username';
@@ -170,6 +190,8 @@
         const textSpan = document.createElement('span');
         textSpan.textContent = data.msg;
 
+        // Ensure time appears first on the line
+        if (data.time) msgLine.appendChild(timeSpan);
         msgLine.appendChild(nameSpan);
         msgLine.appendChild(textSpan);
         chatBox.appendChild(msgLine);
@@ -180,28 +202,26 @@
         e.preventDefault();
         const text = messageInput.value.trim();
         if (text) {
-            socket.emit('send_message', { msg: text, user: myUsername, color: myColor });
+            // Generate current time and send it with the message
+            const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            socket.emit('send_message', { msg: text, user: myUsername, color: myColor, time: currentTime });
             messageInput.value = '';
         }
     });
 
-    // Receive historical messages when joining
     socket.on('load_history', (history) => {
         chatBox.innerHTML = '';
         history.forEach(appendMessage);
     });
 
-    // Receive a single new message
     socket.on('receive_message', (data) => {
         appendMessage(data);
     });
 
-    // Tell the server to wipe everything
     clearBtn.addEventListener('click', () => {
         socket.emit('clear_chat');
     });
 
-    // Listen for the wipe command from the server
     socket.on('chat_cleared', () => {
         chatBox.innerHTML = '';
     });
