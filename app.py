@@ -6,6 +6,12 @@ from pymongo import MongoClient
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+# Astronomy-themed color palette
+USER_COLORS = [
+    "#FF6B6B", "#1BFF9B", "#FFD700", "#A855F7", "#FB923C",
+    "#00D4FF", "#FF00FF", "#ADFF2F", "#FF4500", "#9370DB"
+]
+
 # Connect to MongoDB using an Environment Variable
 MONGO_URI = os.environ.get("MONGO_URI")
 
@@ -47,7 +53,8 @@ def handle_connect():
 
 @socketio.on('join_domain')
 def handle_join(data):
-    active_users[request.sid] = {"user": data['user'], "color": data['color']}
+    user_color = data.get('color', USER_COLORS[0])
+    active_users[request.sid] = {"user": data['user'], "color": user_color}
     emit('update_users', list(active_users.values()), broadcast=True)
 
 
@@ -55,13 +62,12 @@ def handle_join(data):
 def handle_disconnect():
     if request.sid in active_users:
         user_data = active_users[request.sid]
-        # Clean up typing status if they were typing
+        # Clean up typing status
         if user_data['user'] in typing_users:
             typing_users.remove(user_data['user'])
             emit('update_typing', list(typing_users), broadcast=True)
-        # Remove from active list
+        # Remove from active list and broadcast update
         del active_users[request.sid]
-        # Broadcast the new list to everyone immediately
         emit('update_users', list(active_users.values()), broadcast=True)
 
 
@@ -72,6 +78,7 @@ def handle_send_message(data):
     else:
         chat_history.append(data)
 
+    # Remove typing status on send
     if data['user'] in typing_users:
         typing_users.remove(data['user'])
         emit('update_typing', list(typing_users), broadcast=True)
