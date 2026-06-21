@@ -1,96 +1,160 @@
-import os
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
-from pymongo import MongoClient
+from datetime import datetime
 
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'arj_cosmic_secret_key'
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-USER_COLORS = [
-    "#FF6B6B", "#1BFF9B", "#FFD700", "#A855F7", "#FB923C",
-    "#00D4FF", "#FF00FF", "#ADFF2F", "#FF4500", "#9370DB"
-]
-
-MONGO_URI = os.environ.get("MONGO_URI")
-if MONGO_URI:
-    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000, tls=True, tlsAllowInvalidCertificates=True,
-                         retryWrites=True)
-    db = client['arj_domain']
-    messages_collection = db['messages']
-else:
-    messages_collection = None
-    chat_history = []
-
+# --- Global State ---
+users = {}  # sid -> {'user': name, 'color': color}
+chat_history = []  # List of message dicts
 typing_users = set()
-active_users = {}
-game_queue = []
-match_active = False
-players_in_match = []
+crowns_list = []  # List of usernames who won a match
+
+# Game State
+ping_pong_queue = []  # List of sids
+active_matches = {}  # sid -> opponent_sid
+
+
+def broadcast_users():
+    active_users = list(users.values())
+    emit('update_users', active_users, broadcast=True)
+
+
+def broadcast_queue():
+    count = len(ping_pong_queue)
+    status = count if count < 2 else 'full'
+    emit('queue_update', {'count': status}, broadcast=True)
 
 
 @app.route('/')
 def index():
+    # Make sure your HTML file is named index.html and is inside a "templates" folder
     return render_template('index.html')
-
-
-@socketio.on('connect')
-def handle_connect():
-    history = list(messages_collection.find({}, {'_id': 0})) if messages_collection is not None else chat_history
-    emit('load_history', history)
-    emit('queue_update', {'count': 'full' if match_active else len(game_queue)})
 
 
 @socketio.on('join_domain')
 def handle_join(data):
-    active_users[request.sid] = {"user": data['user'], "color": data.get('color', USER_COLORS[0])}
-    emit('update_users', list(active_users.values()), broadcast=True)
-
-
-@socketio.on('toggle_queue')
-def handle_toggle_queue():
-    global match_active
-    if match_active or request.sid not in active_users: return
-    if request.sid in game_queue:
-        game_queue.remove(request.sid)
-    else:
-        game_queue.append(request.sid)
-
-    if len(game_queue) >= 2:
-        match_active = True
-        p1, p2 = game_queue.pop(0), game_queue.pop(0)
-        players_in_match.extend([p1, p2])
-        emit('start_match', {'p1': active_users[p1]['user'], 'p2': active_users[p2]['user']}, broadcast=True)
-    emit('queue_update', {'count': 'full' if match_active else len(game_queue)}, broadcast=True)
-
-
-@socketio.on('match_won')
-def handle_win(data):
-    global match_active
-    match_active = False
-    players_in_match.clear()
-    emit('end_game_sequence', data, broadcast=True)
+    users[request.sid] = {'user': data['user'], 'color': data['color']}
+    emit('load_history', chat_history[-50:])  # Send last 50 messages
+    emit('update_crowns', crowns_list)
+    broadcast_users()
+    broadcast_queue()
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
-    global match_active
-    if request.sid in active_users:
-        if request.sid in players_in_match:
-            match_active = False
-            players_in_match.clear()
-            emit('match_ended', broadcast=True)
-        del active_users[request.sid]
-        emit('update_users', list(active_users.values()), broadcast=True)
+    if request.sid in users:
+        username = users[request.sid]['user']
+        typing_users.discard(username)
+        del users[request.sid]
+
+        # Handle queue cleanup
+        if request.sid in ping_pong_queue:
+            ping_pong_queue.remove(request.sid)
+
+        # Handle active match disconnect
+        if request.sid in active_matches:
+            opponent_sid = active_matches.pop(request.sid)
+            if opponent_sid in active_matches:
+                del active_matches[opponent_sid]
+            socketio.emit('match_ended', room=opponent_sid)
+
+        emit('update_typing', list(typing_users), broadcast=True)
+        broadcast_users()
+        broadcast_queue()
 
 
 @socketio.on('send_message')
-def handle_send_message(data):
-    if messages_collection is not None:
-        messages_collection.insert_one(data.copy())
-    else:
-        chat_history.append(data)
+def handle_message(data):
+    chat_history.append(data)
+    # Keep history from getting too large
+    if len(chat_history) > 100:
+        chat_history.pop(0)
     emit('receive_message', data, broadcast=True)
 
 
+@socketio.on('typing')
+def handle_typing(data):
+    typing_users.add(data['user'])
+    emit('update_typing', list(typing_users), broadcast=True)
+
+
+@socketio.on('stop_typing')
+def handle_stop_typing(data):
+    typing_users.discard(data['user'])
+    emit('update_typing', list(typing_users), broadcast=True)
+
+
+@socketio.on('clear_chat')
+def handle_clear_chat():
+    chat_history.clear()
+    emit('chat_cleared', broadcast=True)
+
+
+@socketio.on('ping')
+def handle_ping():
+    pass  # Keeps connection alive
+
+
+# --- Game Engine Routing ---
+
+@socketio.on('toggle_queue')
+def handle_toggle_queue():
+    if request.sid in active_matches:
+        return  # Cannot queue while in a match
+
+    if request.sid in ping_pong_queue:
+        ping_pong_queue.remove(request.sid)
+    else:
+        ping_pong_queue.append(request.sid)
+
+    broadcast_queue()
+
+    # Start match if 2 players are queued
+    if len(ping_pong_queue) >= 2:
+        p1_sid = ping_pong_queue.pop(0)
+        p2_sid = ping_pong_queue.pop(0)
+
+        active_matches[p1_sid] = p2_sid
+        active_matches[p2_sid] = p1_sid
+
+        match_config = {
+            'p1_name': users[p1_sid]['user'],
+            'p1_color': users[p1_sid]['color'],
+            'p2_name': users[p2_sid]['user'],
+            'p2_color': users[p2_sid]['color']
+        }
+
+        socketio.emit('start_match', match_config, room=p1_sid)
+        socketio.emit('start_match', match_config, room=p2_sid)
+        broadcast_queue()
+
+
+@socketio.on('game_state_sync')
+def handle_state_sync(data):
+    if request.sid in active_matches:
+        opponent_sid = active_matches[request.sid]
+        # Relay state directly to the specific opponent
+        socketio.emit('receive_game_state', data, room=opponent_sid)
+
+
+@socketio.on('match_over')
+def handle_match_over(data):
+    winner = data.get('winner')
+    if winner and winner not in crowns_list:
+        crowns_list.append(winner)
+        emit('update_crowns', crowns_list, broadcast=True)
+
+    if request.sid in active_matches:
+        opponent_sid = active_matches.pop(request.sid)
+        if opponent_sid in active_matches:
+            del active_matches[opponent_sid]
+
+        socketio.emit('match_ended', room=request.sid)
+        socketio.emit('match_ended', room=opponent_sid)
+
+
 if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)

@@ -413,6 +413,7 @@
     let activeGameLoopId = null;
     let isTimerRunning = false;
     let gameTimerValue = 3;
+    let lastSyncTime = 0;
     const virtualWidth = 1200;
     const virtualHeight = 800;
     const paddleVirtualWidth = 15;
@@ -583,7 +584,7 @@
 
     socket.on('receive_game_state', (data) => {
         remotePaddleY = data.paddleY;
-        if (matchConfiguration && socket.id !== matchConfiguration.p1_sid) {
+        if (matchConfiguration && myUsername !== matchConfiguration.p1_name) {
             gameStateBall.x = data.ballX;
             gameStateBall.y = data.ballY;
             matchScores = data.scores;
@@ -646,8 +647,10 @@
         activeGameLoopId = requestAnimationFrame(processAndRenderGameFrame);
     }
 
-    function processAndRenderGameFrame() {
-        const isPlayer1 = socket.id === matchConfiguration.p1_sid;
+    function processAndRenderGameFrame(timestamp) {
+        if (!timestamp) timestamp = performance.now();
+
+        const isPlayer1 = myUsername === matchConfiguration.p1_name;
         const speedMultiplier = 12;
 
         if (keyboardState.ArrowUp) {
@@ -657,12 +660,15 @@
             localPaddleY = Math.min(virtualHeight - paddleVirtualHeight, localPaddleY + speedMultiplier);
         }
 
-        socket.emit('game_state_sync', {
-            paddleY: localPaddleY,
-            ballX: gameStateBall.x,
-            ballY: gameStateBall.y,
-            scores: matchScores
-        });
+        if (timestamp - lastSyncTime > 50) {
+            socket.emit('game_state_sync', {
+                paddleY: localPaddleY,
+                ballX: gameStateBall.x,
+                ballY: gameStateBall.y,
+                scores: matchScores
+            });
+            lastSyncTime = timestamp;
+        }
 
         if (isPlayer1) {
             gameStateBall.x += gameStateBall.dx;
