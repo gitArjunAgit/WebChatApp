@@ -18,6 +18,23 @@
             overflow-x: hidden;
         }
 
+        .audio-control {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 200;
+            background: rgba(11, 7, 38, 0.8);
+            padding: 10px 15px;
+            border-radius: 12px;
+            border: 1px solid #f6d365;
+            color: #f6d365;
+            font-size: 0.8em;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
         .cosmos-layer {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -311,6 +328,15 @@
 </head>
 <body>
 
+<audio id="bg-music" loop>
+    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+</audio>
+
+<div class="audio-control">
+    <label for="music-toggle">♪ Music</label>
+    <input type="checkbox" id="music-toggle">
+</div>
+
 <div class="cosmos-layer">
     <div class="floating-text" style="top: 5%; left: 5%;">e^{iπ} + 1 = 0</div>
     <div class="floating-text" style="top: 15%; left: 85%;">F = G(m₁m₂)/r²</div>
@@ -381,6 +407,16 @@
 
 <script>
     const socket = io();
+    const musicToggle = document.getElementById('music-toggle');
+    const bgMusic = document.getElementById('bg-music');
+
+    musicToggle.addEventListener('change', () => {
+        if (musicToggle.checked) {
+            bgMusic.play().catch(e => console.log("User interaction required to play audio."));
+        } else {
+            bgMusic.pause();
+        }
+    });
 
     const entryPortal = document.getElementById('entry-portal');
     const entryForm = document.getElementById('entry-form');
