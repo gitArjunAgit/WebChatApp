@@ -32,6 +32,7 @@ else:
 
 typing_users = set()
 active_users = {}
+game_queue = []
 
 
 @app.route('/')
@@ -49,6 +50,8 @@ def handle_connect():
     else:
         history = chat_history
     emit('load_history', history)
+    # Send current queue status to the user upon connecting
+    emit('queue_update', {'count': len(game_queue)})
 
 
 @socketio.on('join_domain')
@@ -56,6 +59,20 @@ def handle_join(data):
     user_color = data.get('color', USER_COLORS[0])
     active_users[request.sid] = {"user": data['user'], "color": user_color}
     emit('update_users', list(active_users.values()), broadcast=True)
+
+
+@socketio.on('toggle_queue')
+def handle_toggle_queue():
+    if request.sid in game_queue:
+        game_queue.remove(request.sid)
+    else:
+        game_queue.append(request.sid)
+
+    emit('queue_update', {'count': len(game_queue)}, broadcast=True)
+
+    if len(game_queue) >= 2:
+        p1, p2 = game_queue.pop(0), game_queue.pop(0)
+        emit('start_match', {'p1': p1, 'p2': p2}, broadcast=True)
 
 
 @socketio.on('disconnect')
@@ -66,6 +83,9 @@ def handle_disconnect():
             typing_users.remove(user_data['user'])
             emit('update_typing', list(typing_users), broadcast=True)
         del active_users[request.sid]
+        if request.sid in game_queue:
+            game_queue.remove(request.sid)
+            emit('queue_update', {'count': len(game_queue)}, broadcast=True)
         emit('update_users', list(active_users.values()), broadcast=True)
 
 
