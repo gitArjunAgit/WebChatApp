@@ -154,6 +154,8 @@
 
     // Keep-alive ping
     setInterval(() => { socket.emit('ping'); }, 300000);
+    // Force the chat to the bottom
+    chatBox.scrollTop = chatBox.scrollHeight;
 </script>
 </body>
 </html>
