@@ -478,7 +478,13 @@
     });
 
     socket.on('queue_update', (data) => {
-        pingPongBtn.textContent = `Ping Pong (${data.count}/2)`;
+        if (data.count === 'full') {
+            pingPongBtn.textContent = "Ping Pong (Full!)";
+            pingPongBtn.style.background = "#ef4444";
+        } else {
+            pingPongBtn.textContent = `Ping Pong (${data.count}/2)`;
+            pingPongBtn.style.background = "linear-gradient(135deg, #a855f7 0%, #3b82f6 100%)";
+        }
     });
 
     socket.on('start_match', (data) => {
