@@ -344,7 +344,7 @@
 </div>
 
 <div id="game-view">
-    <h1>Game Active!</h1>
+    <canvas id="pongCanvas" width="600" height="400" style="background:black; border: 2px solid white;"></canvas>
 </div>
 
 <script>
@@ -364,9 +364,21 @@
     const typingList = document.getElementById('typing-list');
     const usersList = document.getElementById('users-list');
 
+    // Game Setup
+    const canvas = document.getElementById('pongCanvas');
+    const ctx = canvas.getContext('2d');
+    const grid = 15;
+    const paddleHeight = 80;
+    const paddleWidth = 10;
+
     let myUsername = "";
     let myColor = "";
     let typingTimeout;
+
+    // Game State
+    let ball = { x: 300, y: 200, dx: 4, dy: 4, width: 10, height: 10 };
+    let leftPaddle = { x: 20, y: 160, dy: 0 };
+    let rightPaddle = { x: 570, y: 160, dy: 0 };
 
     socket.on('connect', () => {
         statusBar.textContent = "● You are connected to the domain";
@@ -490,7 +502,36 @@
     socket.on('start_match', (data) => {
         mainLayout.style.display = 'none';
         document.getElementById('game-view').style.display = 'block';
+        gameLoop();
     });
+
+    function gameLoop() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw Paddles
+        ctx.fillStyle = "white";
+        ctx.fillRect(leftPaddle.x, leftPaddle.y, paddleWidth, paddleHeight);
+        ctx.fillRect(rightPaddle.x, rightPaddle.y, paddleWidth, paddleHeight);
+
+        // Draw Ball
+        ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
+
+        ball.x += ball.dx;
+        ball.y += ball.dy;
+
+        // Wall collision
+        if (ball.y < 0 || ball.y > canvas.height - ball.height) ball.dy *= -1;
+
+        // Simple Paddle collision (detect overlap)
+        if (
+            (ball.x < leftPaddle.x + paddleWidth && ball.x + ball.width > leftPaddle.x && ball.y + ball.height > leftPaddle.y && ball.y < leftPaddle.y + paddleHeight) ||
+            (ball.x < rightPaddle.x + paddleWidth && ball.x + ball.width > rightPaddle.x && ball.y + ball.height > rightPaddle.y && ball.y < rightPaddle.y + paddleHeight)
+        ) {
+            ball.dx *= -1;
+        }
+
+        requestAnimationFrame(gameLoop);
+    }
 
     clearBtn.addEventListener('click', () => {
         socket.emit('clear_chat');

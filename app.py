@@ -33,7 +33,8 @@ else:
 typing_users = set()
 active_users = {}
 game_queue = []
-match_active = False  # Track if a match is currently running
+match_active = False
+players_in_match = []
 
 
 @app.route('/')
@@ -51,11 +52,7 @@ def handle_connect():
     else:
         history = chat_history
     emit('load_history', history)
-    # Send current status
-    if match_active:
-        emit('queue_update', {'count': 'full'})
-    else:
-        emit('queue_update', {'count': len(game_queue)})
+    emit('queue_update', {'count': 'full' if match_active else len(game_queue)})
 
 
 @socketio.on('join_domain')
@@ -78,6 +75,7 @@ def handle_toggle_queue():
     if len(game_queue) >= 2:
         match_active = True
         p1, p2 = game_queue.pop(0), game_queue.pop(0)
+        players_in_match.extend([p1, p2])
         emit('queue_update', {'count': 'full'}, broadcast=True)
         emit('start_match', {'p1': p1, 'p2': p2}, broadcast=True)
     else:
@@ -93,9 +91,17 @@ def handle_disconnect():
             typing_users.remove(user_data['user'])
             emit('update_typing', list(typing_users), broadcast=True)
         del active_users[request.sid]
+
         if request.sid in game_queue:
             game_queue.remove(request.sid)
             emit('queue_update', {'count': len(game_queue)}, broadcast=True)
+
+        if request.sid in players_in_match:
+            match_active = False
+            players_in_match.clear()
+            emit('queue_update', {'count': 0}, broadcast=True)
+            emit('match_ended', broadcast=True)
+
         emit('update_users', list(active_users.values()), broadcast=True)
 
 
