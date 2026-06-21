@@ -1,40 +1,56 @@
-import os
-import eventlet
-eventlet.monkey_patch()
-
 from flask import Flask, render_template
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'arj-domain-super-secret-key'
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Memory list to store messages
 chat_history = []
+typing_users = set()
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Send history to anyone who joins
+
 @socketio.on('connect')
 def handle_connect():
     emit('load_history', chat_history)
 
+
 @socketio.on('send_message')
-def handle_message(data):
+def handle_send_message(data):
     chat_history.append(data)
-    # Keep history from lagging (saves the last 150 messages)
-    if len(chat_history) > 150:
-        chat_history.pop(0)
+    if data['user'] in typing_users:
+        typing_users.remove(data['user'])
+        emit('update_typing', list(typing_users), broadcast=True)
     emit('receive_message', data, broadcast=True)
 
-# Instantly clear chat for everyone
+
 @socketio.on('clear_chat')
-def handle_clear():
-    chat_history.clear()
+def handle_clear_chat():
+    global chat_history
+    chat_history = []
     emit('chat_cleared', broadcast=True)
 
+
+@socketio.on('typing')
+def handle_typing(data):
+    typing_users.add(data['user'])
+    emit('update_typing', list(typing_users), broadcast=True)
+
+
+@socketio.on('stop_typing')
+def handle_stop_typing(data):
+    if data['user'] in typing_users:
+        typing_users.remove(data['user'])
+    emit('update_typing', list(typing_users), broadcast=True)
+
+
+@socketio.on('ping')
+def handle_ping():
+    pass
+
+
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app)

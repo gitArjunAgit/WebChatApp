@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>realm of the chungies</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         body {
             font-family: 'Segoe UI', Roboto, sans-serif;
-            max-width: 750px;
+            max-width: 1050px;
             margin: 0 auto;
             padding: 40px 20px;
             color: #f1f5f9;
@@ -60,24 +61,200 @@
             width: 100%;
         }
 
-        #entry-box h1 { color: #f6d365; text-transform: uppercase; letter-spacing: 4px; margin-top: 0; }
-        #username-input { width: 85%; padding: 16px; margin-bottom: 20px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); border-radius: 14px; color: #fff; text-align: center; }
-        #join-btn { width: 95%; padding: 16px; background: linear-gradient(135deg, #a855f7 0%, #fda085 100%); color: #fff; font-weight: 800; border: none; border-radius: 14px; cursor: pointer; text-transform: uppercase; }
+        #entry-box h1 {
+            color: #f6d365;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-top: 0;
+            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+        }
 
-        #chat-container { background: rgba(11, 7, 38, 0.8); padding: 30px; border-radius: 24px; border: 2px solid #f6d365; box-shadow: 0 0 35px rgba(168, 85, 247, 0.35); backdrop-filter: blur(8px); display: none; }
-        #status-bar { text-align: center; font-size: 0.8em; margin-bottom: 15px; color: #64748b; font-weight: bold; }
-        h2 { margin-top: 0; color: #f6d365; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; text-transform: uppercase; letter-spacing: 4px; font-size: 2em; }
+        #entry-box p {
+            color: #cbd5e1;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
 
-        #chat-box { height: 460px; overflow-y: auto; padding: 20px; margin-bottom: 25px; background: rgba(0,0,0,0.5); border-radius: 16px; border: 1px solid rgba(255,255,255,0.08); }
-        .message-line { margin-bottom: 14px; padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 12px; }
-        .timestamp { font-size: 0.75em; color: rgba(255,255,255,0.4); margin-right: 10px; font-family: monospace; }
-        .username { font-weight: 800; margin-right: 12px; }
+        #username-input {
+            width: 85%;
+            padding: 16px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            font-size: 1.1em;
+            color: #fff;
+            text-align: center;
+        }
 
-        #message-form { display: flex; gap: 15px; }
-        #message-input { flex-grow: 1; padding: 16px; background: rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.15); border-radius: 14px; color: #fff; }
-        button { padding: 16px 24px; font-weight: 800; border: none; border-radius: 14px; cursor: pointer; text-transform: uppercase; }
-        #send-btn { background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); color: #0c0822; }
-        #clear-btn { background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); color: #fff; }
+        #username-input:focus {
+            outline: none;
+            border-color: #a855f7;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+        }
+
+        #join-btn {
+            width: 95%;
+            padding: 16px;
+            background: linear-gradient(135deg, #a855f7 0%, #fda085 100%);
+            color: #fff;
+            font-weight: 800;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 1.1em;
+        }
+
+        #main-layout {
+            display: none;
+            gap: 25px;
+        }
+
+        #chat-container {
+            flex: 3;
+            background: rgba(11, 7, 38, 0.8);
+            padding: 30px;
+            border-radius: 24px;
+            border: 2px solid #f6d365;
+            box-shadow: 0 0 35px rgba(168, 85, 247, 0.35);
+            backdrop-filter: blur(8px);
+        }
+
+        #typing-panel {
+            flex: 1;
+            background: rgba(11, 7, 38, 0.6);
+            padding: 25px;
+            border-radius: 24px;
+            border: 2px solid rgba(246, 211, 101, 0.2);
+            backdrop-filter: blur(8px);
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        #typing-panel h3 {
+            margin-top: 0;
+            color: #f6d365;
+            text-transform: uppercase;
+            font-size: 0.9em;
+            letter-spacing: 2px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 12px;
+        }
+
+        .typing-pill {
+            background: rgba(255, 255, 255, 0.04);
+            padding: 12px 16px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            font-size: 0.85em;
+            border-left: 3px solid #f6d365;
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.5; transform: scale(0.98); }
+            50% { opacity: 1; transform: scale(1); }
+            100% { opacity: 0.5; transform: scale(0.98); }
+        }
+
+        #status-bar {
+            text-align: center;
+            font-size: 0.8em;
+            margin-bottom: 15px;
+            color: #64748b;
+            font-weight: bold;
+        }
+
+        h2 {
+            margin-top: 0;
+            color: #f6d365;
+            font-weight: 900;
+            text-align: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-size: 2em;
+            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+        }
+
+        #chat-box {
+            height: 460px;
+            overflow-y: auto;
+            padding: 20px;
+            margin-bottom: 25px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .message-line {
+            margin-bottom: 14px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            line-height: 1.5;
+        }
+
+        .timestamp {
+            font-size: 0.75em;
+            color: rgba(255, 255, 255, 0.4);
+            margin-right: 10px;
+            font-family: monospace;
+        }
+
+        .username {
+            font-weight: 800;
+            margin-right: 12px;
+            font-size: 0.95em;
+            letter-spacing: 0.5px;
+        }
+
+        #message-form {
+            display: flex;
+            gap: 15px;
+        }
+
+        #message-input {
+            flex-grow: 1;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            border-radius: 14px;
+            font-size: 1em;
+            color: #fff;
+        }
+
+        #message-input:focus {
+            outline: none;
+            border-color: #f6d365;
+            box-shadow: 0 0 12px rgba(246, 211, 101, 0.4);
+        }
+
+        button {
+            padding: 16px 24px;
+            font-weight: 800;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: transform 0.2s;
+        }
+
+        button:hover {
+            transform: scale(1.02);
+        }
+
+        #send-btn {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            color: #0c0822;
+        }
+
+        #clear-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            color: #fff;
+        }
     </style>
 </head>
 <body>
@@ -95,27 +272,53 @@
     </div>
 </div>
 
-<div id="chat-container">
-    <div id="status-bar">Connecting to the cosmos...</div>
-    <h2>Arj Domain</h2>
-    <div id="chat-box"></div>
-    <form id="message-form">
-        <input type="text" id="message-input" placeholder="Transmit message..." required autocomplete="off">
-        <button type="submit" id="send-btn">Send</button>
-        <button type="button" id="clear-btn">Wipe</button>
-    </form>
+<div id="main-layout">
+    <div id="chat-container">
+        <div id="status-bar">Connecting to the cosmos...</div>
+        <h2>Arj Domain</h2>
+        <div id="chat-box"></div>
+
+        <form id="message-form">
+            <input type="text" id="message-input" placeholder="Transmit your message to the cosmos..." required autocomplete="off">
+            <button type="submit" id="send-btn">Send</button>
+            <button type="button" id="clear-btn">Wipe</button>
+        </form>
+    </div>
+
+    <div id="typing-panel">
+        <h3>Transmitting...</h3>
+        <div id="typing-list"></div>
+    </div>
 </div>
 
 <script>
     const socket = io();
-    const entryPortal = document.getElementById('entry-portal'), entryForm = document.getElementById('entry-form'), usernameInput = document.getElementById('username-input'), chatContainer = document.getElementById('chat-container'), chatBox = document.getElementById('chat-box'), messageForm = document.getElementById('message-form'), messageInput = document.getElementById('message-input'), clearBtn = document.getElementById('clear-btn'), statusBar = document.getElementById('status-bar');
 
-    const cosmicColors = ["#f6d365", "#38bdf8", "#4ade80", "#f43f5e", "#c084fc", "#fb923c", "#22d3ee", "#e879f9", "#fb7185", "#a3e635"];
+    const entryPortal = document.getElementById('entry-portal');
+    const entryForm = document.getElementById('entry-form');
+    const usernameInput = document.getElementById('username-input');
+    const mainLayout = document.getElementById('main-layout');
+    const chatBox = document.getElementById('chat-box');
+    const messageForm = document.getElementById('message-form');
+    const messageInput = document.getElementById('message-input');
+    const clearBtn = document.getElementById('clear-btn');
+    const statusBar = document.getElementById('status-bar');
+    const typingList = document.getElementById('typing-list');
+
     let myUsername = "";
+    const cosmicColors = ["#f6d365", "#38bdf8", "#4ade80", "#f43f5e", "#c084fc", "#fb923c", "#22d3ee", "#e879f9", "#fb7185", "#a3e635"];
     const myColor = cosmicColors[Math.floor(Math.random() * cosmicColors.length)];
+    let typingTimeout;
 
-    socket.on('connect', () => { statusBar.textContent = "● You are connected to the domain"; statusBar.style.color = "#4ade80"; });
-    socket.on('disconnect', () => { statusBar.textContent = "○ Disconnected - Reconnecting..."; statusBar.style.color = "#f43f5e"; });
+    socket.on('connect', () => {
+        statusBar.textContent = "● You are connected to the domain";
+        statusBar.style.color = "#4ade80";
+    });
+
+    socket.on('disconnect', () => {
+        statusBar.textContent = "○ Disconnected - Reconnecting...";
+        statusBar.style.color = "#f43f5e";
+    });
 
     entryForm.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -123,18 +326,35 @@
         if (enteredName) {
             myUsername = enteredName;
             entryPortal.style.opacity = '0';
-            setTimeout(() => { entryPortal.style.display = 'none'; chatContainer.style.display = 'block'; messageInput.focus(); }, 500);
+            setTimeout(() => {
+                entryPortal.style.display = 'none';
+                mainLayout.style.display = 'flex';
+                messageInput.focus();
+            }, 500);
         }
     });
 
     function appendMessage(data) {
-        const msgLine = document.createElement('div'); msgLine.className = 'message-line';
-        const timeSpan = document.createElement('span'); timeSpan.className = 'timestamp'; timeSpan.textContent = data.time ? `[${data.time}]` : '';
-        const nameSpan = document.createElement('span'); nameSpan.className = 'username'; nameSpan.textContent = data.user + ":"; nameSpan.style.color = data.color;
-        const textSpan = document.createElement('span'); textSpan.textContent = data.msg;
+        const msgLine = document.createElement('div');
+        msgLine.className = 'message-line';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'timestamp';
+        timeSpan.textContent = data.time ? `[${data.time}]` : '';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'username';
+        nameSpan.textContent = data.user + ":";
+        nameSpan.style.color = data.color;
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = data.msg;
+
         if (data.time) msgLine.appendChild(timeSpan);
-        msgLine.appendChild(nameSpan); msgLine.appendChild(textSpan);
-        chatBox.appendChild(msgLine); chatBox.scrollTop = chatBox.scrollHeight;
+        msgLine.appendChild(nameSpan);
+        msgLine.appendChild(textSpan);
+        chatBox.appendChild(msgLine);
+        chatBox.scrollTop = chatBox.scrollHeight;
     }
 
     messageForm.addEventListener('submit', (e) => {
@@ -143,19 +363,53 @@
         if (text && myUsername !== "") {
             const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             socket.emit('send_message', { msg: text, user: myUsername, color: myColor, time: currentTime });
+            socket.emit('stop_typing', { user: myUsername });
             messageInput.value = '';
         }
     });
 
-    socket.on('load_history', (history) => { chatBox.innerHTML = ''; history.forEach(appendMessage); });
-    socket.on('receive_message', (data) => appendMessage(data));
-    clearBtn.addEventListener('click', () => socket.emit('clear_chat'));
-    socket.on('chat_cleared', () => chatBox.innerHTML = '');
+    messageInput.addEventListener('input', () => {
+        if (myUsername !== "") {
+            socket.emit('typing', { user: myUsername });
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit('stop_typing', { user: myUsername });
+            }, 2000);
+        }
+    });
 
-    // Keep-alive ping
-    setInterval(() => { socket.emit('ping'); }, 300000);
-    // Force the chat to the bottom
-    chatBox.scrollTop = chatBox.scrollHeight;
+    socket.on('load_history', (history) => {
+        chatBox.innerHTML = '';
+        history.forEach(appendMessage);
+    });
+
+    socket.on('receive_message', (data) => {
+        appendMessage(data);
+    });
+
+    socket.on('update_typing', (users) => {
+        typingList.innerHTML = '';
+        users.forEach(user => {
+            if (user !== myUsername) {
+                const div = document.createElement('div');
+                div.className = 'typing-pill';
+                div.textContent = `${user} is typing...`;
+                typingList.appendChild(div);
+            }
+        });
+    });
+
+    clearBtn.addEventListener('click', () => {
+        socket.emit('clear_chat');
+    });
+
+    socket.on('chat_cleared', () => {
+        chatBox.innerHTML = '';
+    });
+
+    setInterval(() => {
+        socket.emit('ping');
+    }, 300000);
 </script>
 </body>
 </html>
