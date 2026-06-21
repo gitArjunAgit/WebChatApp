@@ -75,7 +75,7 @@
             line-height: 1.6;
         }
 
-        #username-input {
+        #username-input, #color-picker {
             width: 85%;
             padding: 16px;
             margin-bottom: 20px;
@@ -87,7 +87,7 @@
             text-align: center;
         }
 
-        #username-input:focus {
+        #username-input:focus, #color-picker:focus {
             outline: none;
             border-color: #a855f7;
             box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
@@ -276,9 +276,21 @@
 <div id="entry-portal">
     <div id="entry-box">
         <h1>Identify</h1>
-        <p>Forge your display name to enter the Arj Domain.</p>
+        <p>Forge your display name and choose a cosmic frequency.</p>
         <form id="entry-form">
             <input type="text" id="username-input" placeholder="Enter display name..." required autocomplete="off" maxlength="20">
+            <select id="color-picker">
+                <option value="#FF6B6B">Nebula Pink</option>
+                <option value="#1BFF9B">Aurora Mint</option>
+                <option value="#FFD700">Star Gold</option>
+                <option value="#A855F7">Cosmic Violet</option>
+                <option value="#FB923C">Meteor Orange</option>
+                <option value="#00D4FF">Galactic Blue</option>
+                <option value="#FF00FF">Supernova Magenta</option>
+                <option value="#ADFF2F">Comet Green</option>
+                <option value="#FF4500">Solar Flare Red</option>
+                <option value="#9370DB">Interstellar Purple</option>
+            </select>
             <button type="submit" id="join-btn">Enter Domain</button>
         </form>
     </div>
@@ -315,6 +327,7 @@
     const entryPortal = document.getElementById('entry-portal');
     const entryForm = document.getElementById('entry-form');
     const usernameInput = document.getElementById('username-input');
+    const colorPicker = document.getElementById('color-picker');
     const mainLayout = document.getElementById('main-layout');
     const chatBox = document.getElementById('chat-box');
     const messageForm = document.getElementById('message-form');
@@ -325,8 +338,7 @@
     const usersList = document.getElementById('users-list');
 
     let myUsername = "";
-    const cosmicColors = ["#f6d365", "#38bdf8", "#4ade80", "#f43f5e", "#c084fc", "#fb923c", "#22d3ee", "#e879f9", "#fb7185", "#a3e635"];
-    const myColor = cosmicColors[Math.floor(Math.random() * cosmicColors.length)];
+    let myColor = "";
     let typingTimeout;
 
     socket.on('connect', () => {
@@ -347,6 +359,7 @@
         const enteredName = usernameInput.value.trim();
         if (enteredName) {
             myUsername = enteredName;
+            myColor = colorPicker.value;
             socket.emit('join_domain', { user: myUsername, color: myColor });
             entryPortal.style.opacity = '0';
             setTimeout(() => {
@@ -371,8 +384,6 @@
         nameSpan.style.color = data.color;
 
         const textSpan = document.createElement('span');
-
-        // Escape HTML to prevent XSS, then detect URLs and wrap them in <a> tags
         const escapedMsg = data.msg.replace(/[&<>"']/g, m => "&#" + m.charCodeAt(0) + ";");
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
