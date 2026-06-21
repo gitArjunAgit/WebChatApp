@@ -5,7 +5,6 @@
     <title>realm of the chungies</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
-        /* Base Deep Space Nebula Gradient */
         body {
             font-family: 'Segoe UI', Roboto, sans-serif;
             max-width: 750px;
@@ -18,7 +17,6 @@
             overflow-x: hidden;
         }
 
-        /* Fixed Star Layer 1 */
         .stars-layer {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -36,7 +34,6 @@
             background: rgba(11, 7, 38, 0.8);
             padding: 30px;
             border-radius: 24px;
-            /* Pure CSS Gradient Border Solution */
             border: 2px solid #f6d365;
             box-shadow: 0 0 35px rgba(168, 85, 247, 0.35);
             backdrop-filter: blur(8px);
@@ -102,18 +99,27 @@
         }
 
         button {
-            padding: 16px 32px;
-            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
-            color: #0c0822;
+            padding: 16px 24px;
             font-weight: 800;
             border: none;
             border-radius: 14px;
             cursor: pointer;
             text-transform: uppercase;
+            transition: transform 0.2s;
         }
 
         button:hover {
             transform: scale(1.02);
+        }
+
+        #send-btn {
+            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            color: #0c0822;
+        }
+
+        #clear-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            color: #fff;
         }
     </style>
 </head>
@@ -127,7 +133,8 @@
 
     <form id="message-form">
         <input type="text" id="message-input" placeholder="Transmit your message to the cosmos..." required autocomplete="off">
-        <button type="submit">Send</button>
+        <button type="submit" id="send-btn">Send</button>
+        <button type="button" id="clear-btn">Wipe</button>
     </form>
 </div>
 
@@ -136,8 +143,8 @@
     const chatBox = document.getElementById('chat-box');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
+    const clearBtn = document.getElementById('clear-btn');
 
-    // Your Explicit Roster List
     const customUsers = [
         "timmy tuff knuckles",
         "dangerous dan",
@@ -150,16 +157,8 @@
     const brightColors = ["#f6d365", "#38bdf8", "#4ade80", "#f43f5e", "#c084fc", "#fb923c"];
     const myColor = brightColors[Math.floor(Math.random() * brightColors.length)];
 
-    messageForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const text = messageInput.value.trim();
-        if (text) {
-            socket.emit('send_message', { msg: text, user: myUsername, color: myColor });
-            messageInput.value = '';
-        }
-    });
-
-    socket.on('receive_message', (data) => {
+    // Helper to draw messages safely
+    function appendMessage(data) {
         const msgLine = document.createElement('div');
         msgLine.className = 'message-line';
 
@@ -175,6 +174,36 @@
         msgLine.appendChild(textSpan);
         chatBox.appendChild(msgLine);
         chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    messageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = messageInput.value.trim();
+        if (text) {
+            socket.emit('send_message', { msg: text, user: myUsername, color: myColor });
+            messageInput.value = '';
+        }
+    });
+
+    // Receive historical messages when joining
+    socket.on('load_history', (history) => {
+        chatBox.innerHTML = '';
+        history.forEach(appendMessage);
+    });
+
+    // Receive a single new message
+    socket.on('receive_message', (data) => {
+        appendMessage(data);
+    });
+
+    // Tell the server to wipe everything
+    clearBtn.addEventListener('click', () => {
+        socket.emit('clear_chat');
+    });
+
+    // Listen for the wipe command from the server
+    socket.on('chat_cleared', () => {
+        chatBox.innerHTML = '';
     });
 </script>
 </body>
