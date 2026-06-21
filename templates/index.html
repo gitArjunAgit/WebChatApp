@@ -371,7 +371,11 @@
         nameSpan.style.color = data.color;
 
         const textSpan = document.createElement('span');
-        textSpan.textContent = data.msg;
+
+        // Escape HTML to prevent XSS, then detect URLs and wrap them in <a> tags
+        const escapedMsg = data.msg.replace(/[&<>"']/g, m => "&#" + m.charCodeAt(0) + ";");
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
 
         if (data.time) msgLine.appendChild(timeSpan);
         msgLine.appendChild(nameSpan);
