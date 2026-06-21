@@ -62,11 +62,9 @@ def handle_join(data):
 def handle_disconnect():
     if request.sid in active_users:
         user_data = active_users[request.sid]
-        # Clean up typing status
         if user_data['user'] in typing_users:
             typing_users.remove(user_data['user'])
             emit('update_typing', list(typing_users), broadcast=True)
-        # Remove from active list and broadcast update
         del active_users[request.sid]
         emit('update_users', list(active_users.values()), broadcast=True)
 
@@ -78,7 +76,6 @@ def handle_send_message(data):
     else:
         chat_history.append(data)
 
-    # Remove typing status on send
     if data['user'] in typing_users:
         typing_users.remove(data['user'])
         emit('update_typing', list(typing_users), broadcast=True)

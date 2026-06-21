@@ -152,6 +152,12 @@
             padding: 8px 12px;
             font-size: 0.9em;
             font-weight: bold;
+            transition: background 0.3s;
+            border-radius: 8px;
+        }
+
+        .user-item:hover {
+            background: rgba(255, 255, 255, 0.05);
         }
 
         .typing-pill {
@@ -442,8 +448,10 @@
         users.forEach(u => {
             const div = document.createElement('div');
             div.className = 'user-item';
-            div.style.color = u.color;
-            div.textContent = `● ${u.user} ${u.user === myUsername ? '(You)' : ''}`;
+            div.innerHTML = `
+                <span style="color: ${u.color}; margin-right: 8px;">●</span>
+                <span style="color: white;">${u.user} ${u.user === myUsername ? '(You)' : ''}</span>
+            `;
             usersList.appendChild(div);
         });
     });
