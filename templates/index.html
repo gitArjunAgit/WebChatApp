@@ -28,7 +28,7 @@
 
         .floating-text {
             position: absolute;
-            color: rgba(255, 255, 255, 0.06);
+            color: rgba(255, 255, 255, 0.15);
             font-family: 'Courier New', monospace;
             font-size: 1.8em;
             animation: drift 60s linear infinite;
@@ -39,7 +39,7 @@
             border-radius: 50%;
             background: radial-gradient(circle at 30% 30%, #4a4a4a, #1a1a1a);
             animation: rotate 120s linear infinite;
-            opacity: 0.2;
+            opacity: 0.4;
         }
 
         @keyframes drift {
@@ -312,12 +312,21 @@
 <body>
 
 <div class="cosmos-layer">
-    <div class="floating-text" style="top: 10%; left: 10%;">e^{iπ} + 1 = 0</div>
-    <div class="floating-text" style="top: 30%; left: 80%;">F = G(m₁m₂)/r²</div>
-    <div class="floating-text" style="top: 60%; left: 20%;">∑(1/2ⁿ) = 2</div>
-    <div class="floating-text" style="top: 80%; left: 70%;">ψ(x,t)</div>
-    <div class="planet" style="width: 100px; height: 100px; top: 20%; left: 50%; background: #3b82f6;"></div>
-    <div class="planet" style="width: 50px; height: 50px; top: 70%; left: 10%; background: #f6d365;"></div>
+    <div class="floating-text" style="top: 5%; left: 5%;">e^{iπ} + 1 = 0</div>
+    <div class="floating-text" style="top: 15%; left: 85%;">F = G(m₁m₂)/r²</div>
+    <div class="floating-text" style="top: 25%; left: 30%;">∑(1/2ⁿ) = 2</div>
+    <div class="floating-text" style="top: 40%; left: 60%;">ψ(x,t)</div>
+    <div class="floating-text" style="top: 55%; left: 10%;">E = mc²</div>
+    <div class="floating-text" style="top: 70%; left: 90%;">∇⋅E = ρ/ε₀</div>
+    <div class="floating-text" style="top: 85%; left: 40%;">∫eˣdx = eˣ + C</div>
+    <div class="floating-text" style="top: 95%; left: 75%;">a² + b² = c²</div>
+
+    <div class="planet" style="width: 120px; height: 120px; top: 10%; left: 20%; background: #3b82f6;"></div>
+    <div class="planet" style="width: 80px; height: 80px; top: 30%; left: 70%; background: #f6d365;"></div>
+    <div class="planet" style="width: 60px; height: 60px; top: 60%; left: 80%; background: #ef4444;"></div>
+    <div class="planet" style="width: 150px; height: 150px; top: 80%; left: 15%; background: #10b981;"></div>
+    <div class="planet" style="width: 40px; height: 40px; top: 50%; left: 45%; background: #a855f7;"></div>
+    <div class="planet" style="width: 90px; height: 90px; top: 20%; left: 90%; background: #fb923c;"></div>
 </div>
 
 <div class="stars-layer"></div>
