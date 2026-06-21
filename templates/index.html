@@ -287,7 +287,37 @@
             color: #fff;
         }
 
-        #game-view { display: none; text-align: center; padding: 50px; border: 2px solid #f6d365; border-radius: 20px; background: rgba(0,0,0,0.8); }
+        /* Expanded Arena Rules for Fullscreen coverage */
+        #game-view {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            background: #000000;
+            z-index: 500;
+            overflow: hidden;
+        }
+
+        #game-arena-title {
+            position: absolute;
+            top: 25px; left: 50%;
+            transform: translateX(-50%);
+            color: #f6d365;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-size: 2em;
+            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+            margin: 0;
+            z-index: 510;
+        }
+
+        #pongCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #000000;
+        }
     </style>
 </head>
 <body>
@@ -344,7 +374,8 @@
 </div>
 
 <div id="game-view">
-    <canvas id="pongCanvas" width="600" height="400" style="background:black; border: 2px solid white;"></canvas>
+    <h1 id="game-arena-title">Ping Pong 1v1</h1>
+    <canvas id="pongCanvas"></canvas>
 </div>
 
 <script>
@@ -364,21 +395,50 @@
     const typingList = document.getElementById('typing-list');
     const usersList = document.getElementById('users-list');
 
-    // Game Setup
+    // Fullscreen Dynamic Setup
     const canvas = document.getElementById('pongCanvas');
     const ctx = canvas.getContext('2d');
-    const grid = 15;
-    const paddleHeight = 80;
-    const paddleWidth = 10;
 
     let myUsername = "";
     let myColor = "";
     let typingTimeout;
+    let crownsList = [];
 
-    // Game State
-    let ball = { x: 300, y: 200, dx: 4, dy: 4, width: 10, height: 10 };
-    let leftPaddle = { x: 20, y: 160, dy: 0 };
-    let rightPaddle = { x: 570, y: 160, dy: 0 };
+    // Game Engine State Variables
+    let matchConfiguration = null;
+    let localPaddleY = 0;
+    let remotePaddleY = 0;
+    let gameStateBall = { x: 0.5, y: 0.5, dx: 0.005, dy: 0.003 };
+    let matchScores = { p1: 0, p2: 0 };
+    let activeGameLoopId = null;
+    let isTimerRunning = false;
+    let gameTimerValue = 3;
+    const virtualWidth = 1200;
+    const virtualHeight = 800;
+    const paddleVirtualWidth = 15;
+    const paddleVirtualHeight = 120;
+
+    // Movement Tracker
+    const keyboardState = { ArrowUp: false, ArrowDown: false };
+
+    window.addEventListener('keydown', (e) => {
+        if (e.key in keyboardState) {
+            keyboardState[e.key] = true;
+            e.preventDefault();
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        if (e.key in keyboardState) {
+            keyboardState[e.key] = false;
+        }
+    });
+
+    function resizeCanvasToViewport() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvasToViewport);
 
     socket.on('connect', () => {
         statusBar.textContent = "● You are connected to the domain";
@@ -419,7 +479,10 @@
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'username';
-        nameSpan.textContent = data.user + ":";
+
+        // Show crown if applicable
+        const hasCrown = crownsList.includes(data.user);
+        nameSpan.textContent = (hasCrown ? "👑 " : "") + data.user + ":";
         nameSpan.style.color = data.color;
 
         const textSpan = document.createElement('span');
@@ -476,14 +539,19 @@
         });
     });
 
+    socket.on('update_crowns', (winners) => {
+        crownsList = winners;
+    });
+
     socket.on('update_users', (users) => {
         usersList.innerHTML = '';
         users.forEach(u => {
             const div = document.createElement('div');
             div.className = 'user-item';
+            const showCrown = crownsList.includes(u.user) ? " 👑" : "";
             div.innerHTML = `
                 <span style="color: ${u.color}; margin-right: 8px;">●</span>
-                <span style="color: white;">${u.user} ${u.user === myUsername ? '(You)' : ''}</span>
+                <span style="color: white;">${u.user}${showCrown} ${u.user === myUsername ? '(You)' : ''}</span>
             `;
             usersList.appendChild(div);
         });
@@ -500,37 +568,197 @@
     });
 
     socket.on('start_match', (data) => {
+        matchConfiguration = data;
+        resizeCanvasToViewport();
         mainLayout.style.display = 'none';
         document.getElementById('game-view').style.display = 'block';
-        gameLoop();
+
+        localPaddleY = (virtualHeight / 2) - (paddleVirtualHeight / 2);
+        remotePaddleY = (virtualHeight / 2) - (paddleVirtualHeight / 2);
+        matchScores = { p1: 0, p2: 0 };
+        resetBallState();
+
+        runPreMatchCountdown();
     });
 
-    function gameLoop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    socket.on('receive_game_state', (data) => {
+        remotePaddleY = data.paddleY;
+        if (matchConfiguration && socket.id !== matchConfiguration.p1_sid) {
+            gameStateBall.x = data.ballX;
+            gameStateBall.y = data.ballY;
+            matchScores = data.scores;
+        }
+    });
 
-        // Draw Paddles
-        ctx.fillStyle = "white";
-        ctx.fillRect(leftPaddle.x, leftPaddle.y, paddleWidth, paddleHeight);
-        ctx.fillRect(rightPaddle.x, rightPaddle.y, paddleWidth, paddleHeight);
+    socket.on('match_ended', () => {
+        if (activeGameLoopId) {
+            cancelAnimationFrame(activeGameLoopId);
+            activeGameLoopId = null;
+        }
+        isTimerRunning = false;
+        document.getElementById('game-view').style.display = 'none';
+        mainLayout.style.display = 'flex';
+    });
 
-        // Draw Ball
-        ctx.fillRect(ball.x, ball.y, ball.width, ball.height);
+    function resetBallState() {
+        gameStateBall.x = 0.5;
+        gameStateBall.y = 0.5;
+        gameStateBall.dx = (Math.random() > 0.5 ? 1 : -1) * 0.006;
+        gameStateBall.dy = (Math.random() * 2 - 1) * 0.004;
+    }
 
-        ball.x += ball.dx;
-        ball.y += ball.dy;
+    function runPreMatchCountdown() {
+        isTimerRunning = true;
+        gameTimerValue = 3;
 
-        // Wall collision
-        if (ball.y < 0 || ball.y > canvas.height - ball.height) ball.dy *= -1;
+        const countdownInterval = setInterval(() => {
+            if (gameTimerValue <= 0) {
+                clearInterval(countdownInterval);
+                isTimerRunning = false;
+                beginMatchLoop();
+            } else {
+                gameTimerValue--;
+            }
+        }, 1000);
 
-        // Simple Paddle collision (detect overlap)
-        if (
-            (ball.x < leftPaddle.x + paddleWidth && ball.x + ball.width > leftPaddle.x && ball.y + ball.height > leftPaddle.y && ball.y < leftPaddle.y + paddleHeight) ||
-            (ball.x < rightPaddle.x + paddleWidth && ball.x + ball.width > rightPaddle.x && ball.y + ball.height > rightPaddle.y && ball.y < rightPaddle.y + paddleHeight)
-        ) {
-            ball.dx *= -1;
+        renderCountdownScreen();
+    }
+
+    function renderCountdownScreen() {
+        if (!isTimerRunning) return;
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 90px monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        let displayStr = gameTimerValue === 0 ? "GO!" : gameTimerValue;
+        ctx.fillText(displayStr, canvas.width / 2, canvas.height / 2);
+
+        requestAnimationFrame(renderCountdownScreen);
+    }
+
+    function beginMatchLoop() {
+        if (activeGameLoopId) cancelAnimationFrame(activeGameLoopId);
+        activeGameLoopId = requestAnimationFrame(processAndRenderGameFrame);
+    }
+
+    function processAndRenderGameFrame() {
+        const isPlayer1 = socket.id === matchConfiguration.p1_sid;
+        const speedMultiplier = 12;
+
+        if (keyboardState.ArrowUp) {
+            localPaddleY = Math.max(0, localPaddleY - speedMultiplier);
+        }
+        if (keyboardState.ArrowDown) {
+            localPaddleY = Math.min(virtualHeight - paddleVirtualHeight, localPaddleY + speedMultiplier);
         }
 
-        requestAnimationFrame(gameLoop);
+        socket.emit('game_state_sync', {
+            paddleY: localPaddleY,
+            ballX: gameStateBall.x,
+            ballY: gameStateBall.y,
+            scores: matchScores
+        });
+
+        if (isPlayer1) {
+            gameStateBall.x += gameStateBall.dx;
+            gameStateBall.y += gameStateBall.dy;
+
+            if (gameStateBall.y <= 0) {
+                gameStateBall.y = 0;
+                gameStateBall.dy = -gameStateBall.dy;
+            }
+            if (gameStateBall.y >= 1.0) {
+                gameStateBall.y = 1.0;
+                gameStateBall.dy = -gameStateBall.dy;
+            }
+
+            const p1Top = localPaddleY / virtualHeight;
+            const p1Bottom = (localPaddleY + paddleVirtualHeight) / virtualHeight;
+            const p1RightBound = 35 / virtualWidth;
+
+            if (gameStateBall.x <= p1RightBound && gameStateBall.x >= p1RightBound - 0.01) {
+                if (gameStateBall.y >= p1Top && gameStateBall.y <= p1Bottom) {
+                    gameStateBall.dx = Math.abs(gameStateBall.dx) * 1.05;
+                    gameStateBall.x = p1RightBound;
+                }
+            }
+
+            const p2Top = remotePaddleY / virtualHeight;
+            const p2Bottom = (remotePaddleY + paddleVirtualHeight) / virtualHeight;
+            const p2LeftBound = (virtualWidth - 35) / virtualWidth;
+
+            if (gameStateBall.x >= p2LeftBound && gameStateBall.x <= p2LeftBound + 0.01) {
+                if (gameStateBall.y >= p2Top && gameStateBall.y <= p2Bottom) {
+                    gameStateBall.dx = -Math.abs(gameStateBall.dx) * 1.05;
+                    gameStateBall.x = p2LeftBound;
+                }
+            }
+
+            if (gameStateBall.x < 0) {
+                matchScores.p2++;
+                if (matchScores.p2 >= 5) {
+                    socket.emit('match_over', { winner: matchConfiguration.p2_name });
+                    return;
+                }
+                resetBallState();
+            } else if (gameStateBall.x > 1.0) {
+                matchScores.p1++;
+                if (matchScores.p1 >= 5) {
+                    socket.emit('match_over', { winner: matchConfiguration.p1_name });
+                    return;
+                }
+                resetBallState();
+            }
+        }
+
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const widthScale = canvas.width / virtualWidth;
+        const heightScale = canvas.height / virtualHeight;
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([15, 15]);
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2, 0);
+        ctx.lineTo(canvas.width / 2, canvas.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '900 64px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'top';
+        ctx.fillText(matchScores.p1, canvas.width * 0.25, 100);
+        ctx.fillText(matchScores.p2, canvas.width * 0.75, 100);
+
+        const leftPaddleColor = isPlayer1 ? matchConfiguration.p1_color : matchConfiguration.p2_color;
+        const rightPaddleColor = isPlayer1 ? matchConfiguration.p2_color : matchConfiguration.p1_color;
+        const renderLeftY = isPlayer1 ? localPaddleY : remotePaddleY;
+        const renderRightY = isPlayer1 ? remotePaddleY : localPaddleY;
+
+        ctx.fillStyle = leftPaddleColor;
+        ctx.fillRect(20 * widthScale, renderLeftY * heightScale, paddleVirtualWidth * widthScale, paddleVirtualHeight * heightScale);
+
+        ctx.fillStyle = rightPaddleColor;
+        ctx.fillRect((virtualWidth - 20 - paddleVirtualWidth) * widthScale, renderRightY * heightScale, paddleVirtualWidth * widthScale, paddleVirtualHeight * heightScale);
+
+        ctx.fillStyle = '#ffffff';
+        const ballSize = 14;
+        ctx.fillRect(
+            (gameStateBall.x * virtualWidth) * widthScale - (ballSize / 2),
+            (gameStateBall.y * virtualHeight) * heightScale - (ballSize / 2),
+            ballSize,
+            ballSize
+        );
+
+        activeGameLoopId = requestAnimationFrame(processAndRenderGameFrame);
     }
 
     clearBtn.addEventListener('click', () => {

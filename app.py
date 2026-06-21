@@ -6,24 +6,15 @@ from pymongo import MongoClient
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Astronomy-themed color palette
 USER_COLORS = [
     "#FF6B6B", "#1BFF9B", "#FFD700", "#A855F7", "#FB923C",
     "#00D4FF", "#FF00FF", "#ADFF2F", "#FF4500", "#9370DB"
 ]
 
-# Connect to MongoDB using an Environment Variable
 MONGO_URI = os.environ.get("MONGO_URI")
-
-# Using connection parameters to bypass handshake/timeout issues in cloud
 if MONGO_URI:
-    client = MongoClient(
-        MONGO_URI,
-        serverSelectionTimeoutMS=5000,
-        tls=True,
-        tlsAllowInvalidCertificates=True,
-        retryWrites=True
-    )
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000, tls=True, tlsAllowInvalidCertificates=True,
+                         retryWrites=True)
     db = client['arj_domain']
     messages_collection = db['messages']
 else:
@@ -44,29 +35,21 @@ def index():
 
 @socketio.on('connect')
 def handle_connect():
-    if messages_collection is not None:
-        try:
-            history = list(messages_collection.find({}, {'_id': 0}))
-        except Exception:
-            history = []
-    else:
-        history = chat_history
+    history = list(messages_collection.find({}, {'_id': 0})) if messages_collection is not None else chat_history
     emit('load_history', history)
     emit('queue_update', {'count': 'full' if match_active else len(game_queue)})
 
 
 @socketio.on('join_domain')
 def handle_join(data):
-    user_color = data.get('color', USER_COLORS[0])
-    active_users[request.sid] = {"user": data['user'], "color": user_color}
+    active_users[request.sid] = {"user": data['user'], "color": data.get('color', USER_COLORS[0])}
     emit('update_users', list(active_users.values()), broadcast=True)
 
 
 @socketio.on('toggle_queue')
 def handle_toggle_queue():
     global match_active
-    if match_active: return
-
+    if match_active or request.sid not in active_users: return
     if request.sid in game_queue:
         game_queue.remove(request.sid)
     else:
@@ -76,32 +59,27 @@ def handle_toggle_queue():
         match_active = True
         p1, p2 = game_queue.pop(0), game_queue.pop(0)
         players_in_match.extend([p1, p2])
-        emit('queue_update', {'count': 'full'}, broadcast=True)
-        emit('start_match', {'p1': p1, 'p2': p2}, broadcast=True)
-    else:
-        emit('queue_update', {'count': len(game_queue)}, broadcast=True)
+        emit('start_match', {'p1': active_users[p1]['user'], 'p2': active_users[p2]['user']}, broadcast=True)
+    emit('queue_update', {'count': 'full' if match_active else len(game_queue)}, broadcast=True)
+
+
+@socketio.on('match_won')
+def handle_win(data):
+    global match_active
+    match_active = False
+    players_in_match.clear()
+    emit('end_game_sequence', data, broadcast=True)
 
 
 @socketio.on('disconnect')
 def handle_disconnect():
     global match_active
     if request.sid in active_users:
-        user_data = active_users[request.sid]
-        if user_data['user'] in typing_users:
-            typing_users.remove(user_data['user'])
-            emit('update_typing', list(typing_users), broadcast=True)
-        del active_users[request.sid]
-
-        if request.sid in game_queue:
-            game_queue.remove(request.sid)
-            emit('queue_update', {'count': len(game_queue)}, broadcast=True)
-
         if request.sid in players_in_match:
             match_active = False
             players_in_match.clear()
-            emit('queue_update', {'count': 0}, broadcast=True)
             emit('match_ended', broadcast=True)
-
+        del active_users[request.sid]
         emit('update_users', list(active_users.values()), broadcast=True)
 
 
@@ -111,37 +89,8 @@ def handle_send_message(data):
         messages_collection.insert_one(data.copy())
     else:
         chat_history.append(data)
-
-    if data['user'] in typing_users:
-        typing_users.remove(data['user'])
-        emit('update_typing', list(typing_users), broadcast=True)
-
     emit('receive_message', data, broadcast=True)
 
 
-@socketio.on('clear_chat')
-def handle_clear_chat():
-    if messages_collection is not None:
-        messages_collection.delete_many({})
-    else:
-        global chat_history
-        chat_history = []
-    emit('chat_cleared', broadcast=True)
-
-
-@socketio.on('typing')
-def handle_typing(data):
-    typing_users.add(data['user'])
-    emit('update_typing', list(typing_users), broadcast=True)
-
-
-@socketio.on('stop_typing')
-def handle_stop_typing(data):
-    if data['user'] in typing_users:
-        typing_users.remove(data['user'])
-    emit('update_typing', list(typing_users), broadcast=True)
-
-
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
