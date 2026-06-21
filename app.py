@@ -9,13 +9,14 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Connect to MongoDB using an Environment Variable
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# Using tlsAllowInvalidCertificates=True to bypass the SSL handshake issue
+# Using connection parameters to bypass handshake/timeout issues in cloud
 if MONGO_URI:
     client = MongoClient(
         MONGO_URI,
         serverSelectionTimeoutMS=5000,
         tls=True,
-        tlsAllowInvalidCertificates=True
+        tlsAllowInvalidCertificates=True,
+        retryWrites=True
     )
     db = client['arj_domain']
     messages_collection = db['messages']
@@ -54,11 +55,14 @@ def handle_join(data):
 def handle_disconnect():
     if request.sid in active_users:
         user_data = active_users[request.sid]
+        # Clean up typing status if they were typing
         if user_data['user'] in typing_users:
             typing_users.remove(user_data['user'])
             emit('update_typing', list(typing_users), broadcast=True)
+        # Remove from active list
         del active_users[request.sid]
-    emit('update_users', list(active_users.values()), broadcast=True)
+        # Broadcast the new list to everyone immediately
+        emit('update_users', list(active_users.values()), broadcast=True)
 
 
 @socketio.on('send_message')
