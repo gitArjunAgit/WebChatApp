@@ -1,4 +1,5 @@
 import os
+import certifi
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 from pymongo import MongoClient
@@ -9,9 +10,9 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 # Connect to MongoDB using an Environment Variable
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# We use a fallback to memory just in case the database isn't hooked up yet
+# Use certifi.where() to resolve the SSL handshake error
 if MONGO_URI:
-    client = MongoClient(MONGO_URI)
+    client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
     db = client['arj_domain']
     messages_collection = db['messages']
 else:
