@@ -17,7 +17,6 @@
             overflow-x: hidden;
         }
 
-        /* Upgraded dense star layer */
         .stars-layer {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -34,8 +33,63 @@
                 radial-gradient(2px 2px at 280px 80px, #fff, rgba(0,0,0,0)),
                 radial-gradient(1px 1px at 390px 170px, #fff, rgba(0,0,0,0)),
                 radial-gradient(1.5px 1.5px at 420px 330px, #fff, rgba(0,0,0,0));
-            /* Shrunk background size repeats the stars closer together */
             background-size: 300px 300px;
+        }
+
+        #entry-portal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(2, 0, 16, 0.9);
+            backdrop-filter: blur(15px);
+            z-index: 100;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.5s ease;
+        }
+
+        #entry-box {
+            background: rgba(11, 7, 38, 0.9);
+            padding: 40px;
+            border-radius: 24px;
+            border: 2px solid #a855f7;
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.4);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        #entry-box h1 {
+            color: #f6d365;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-top: 0;
+            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+        }
+
+        #username-input {
+            width: 85%;
+            padding: 16px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            font-size: 1.1em;
+            color: #fff;
+            text-align: center;
+        }
+
+        #join-btn {
+            width: 95%;
+            padding: 16px;
+            background: linear-gradient(135deg, #a855f7 0%, #fda085 100%);
+            color: #fff;
+            font-weight: 800;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
         }
 
         #chat-container {
@@ -45,19 +99,18 @@
             border: 2px solid #f6d365;
             box-shadow: 0 0 35px rgba(168, 85, 247, 0.35);
             backdrop-filter: blur(8px);
+            display: none;
         }
 
         h2 {
             margin-top: 0;
             color: #f6d365;
-            font-weight: 900;
             text-align: center;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding-bottom: 20px;
             text-transform: uppercase;
             letter-spacing: 4px;
             font-size: 2em;
-            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
         }
 
         #chat-box {
@@ -70,85 +123,37 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
 
-        .message-line {
-            margin-bottom: 14px;
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            line-height: 1.5;
-        }
+        .message-line { margin-bottom: 14px; padding: 12px 16px; background: rgba(255, 255, 255, 0.03); border-radius: 12px; }
+        .timestamp { font-size: 0.75em; color: rgba(255, 255, 255, 0.4); margin-right: 10px; font-family: monospace; }
+        .username { font-weight: 800; margin-right: 12px; }
 
-        /* New timestamp style */
-        .timestamp {
-            font-size: 0.75em;
-            color: rgba(255, 255, 255, 0.4);
-            margin-right: 10px;
-            font-family: monospace;
-        }
-
-        .username {
-            font-weight: 800;
-            margin-right: 12px;
-            font-size: 0.95em;
-            letter-spacing: 0.5px;
-        }
-
-        #message-form {
-            display: flex;
-            gap: 15px;
-        }
-
-        #message-input {
-            flex-grow: 1;
-            padding: 16px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            border-radius: 14px;
-            font-size: 1em;
-            color: #fff;
-        }
-
-        #message-input:focus {
-            outline: none;
-            border-color: #f6d365;
-            box-shadow: 0 0 12px rgba(246, 211, 101, 0.4);
-        }
-
-        button {
-            padding: 16px 24px;
-            font-weight: 800;
-            border: none;
-            border-radius: 14px;
-            cursor: pointer;
-            text-transform: uppercase;
-            transition: transform 0.2s;
-        }
-
-        button:hover {
-            transform: scale(1.02);
-        }
-
-        #send-btn {
-            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
-            color: #0c0822;
-        }
-
-        #clear-btn {
-            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
-            color: #fff;
-        }
+        #message-form { display: flex; gap: 15px; }
+        #message-input { flex-grow: 1; padding: 16px; background: rgba(0, 0, 0, 0.3); border: 2px solid rgba(255, 255, 255, 0.15); border-radius: 14px; color: #fff; }
+        button { padding: 16px 24px; font-weight: 800; border: none; border-radius: 14px; cursor: pointer; text-transform: uppercase; }
+        #send-btn { background: linear-gradient(135deg, #f6d365 0%, #fda085 100%); color: #0c0822; }
+        #clear-btn { background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%); color: #fff; }
     </style>
 </head>
 <body>
 
 <div class="stars-layer"></div>
 
+<div id="entry-portal">
+    <div id="entry-box">
+        <h1>Identify</h1>
+        <p>Forge your display name to enter the Arj Domain.</p>
+        <form id="entry-form">
+            <input type="text" id="username-input" placeholder="Enter display name..." required autocomplete="off" maxlength="20">
+            <button type="submit" id="join-btn">Enter Domain</button>
+        </form>
+    </div>
+</div>
+
 <div id="chat-container">
     <h2>Arj Domain</h2>
     <div id="chat-box"></div>
-
     <form id="message-form">
-        <input type="text" id="message-input" placeholder="Transmit your message to the cosmos..." required autocomplete="off">
+        <input type="text" id="message-input" placeholder="Transmit message..." required autocomplete="off">
         <button type="submit" id="send-btn">Send</button>
         <button type="button" id="clear-btn">Wipe</button>
     </form>
@@ -156,41 +161,41 @@
 
 <script>
     const socket = io();
+    const entryPortal = document.getElementById('entry-portal');
+    const entryForm = document.getElementById('entry-form');
+    const usernameInput = document.getElementById('username-input');
+    const chatContainer = document.getElementById('chat-container');
     const chatBox = document.getElementById('chat-box');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
     const clearBtn = document.getElementById('clear-btn');
 
-    const customUsers = [
-        "timmy tuff knuckles",
-        "dangerous dan",
-        "treacherous timmy",
-        "red zone ralph",
-        "rise of the chungies"
-    ];
+    const cosmicColors = ["#f6d365", "#38bdf8", "#4ade80", "#f43f5e", "#c084fc", "#fb923c", "#22d3ee", "#e879f9", "#fb7185", "#a3e635"];
+    let myUsername = "";
+    const myColor = cosmicColors[Math.floor(Math.random() * cosmicColors.length)];
 
-    const myUsername = customUsers[Math.floor(Math.random() * customUsers.length)];
-    const brightColors = ["#f6d365", "#38bdf8", "#4ade80", "#f43f5e", "#c084fc", "#fb923c"];
-    const myColor = brightColors[Math.floor(Math.random() * brightColors.length)];
+    entryForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const enteredName = usernameInput.value.trim();
+        if (enteredName) {
+            myUsername = enteredName;
+            entryPortal.style.opacity = '0';
+            setTimeout(() => { entryPortal.style.display = 'none'; chatContainer.style.display = 'block'; messageInput.focus(); }, 500);
+        }
+    });
 
     function appendMessage(data) {
         const msgLine = document.createElement('div');
         msgLine.className = 'message-line';
-
-        // Add the new timestamp logic
         const timeSpan = document.createElement('span');
         timeSpan.className = 'timestamp';
         timeSpan.textContent = data.time ? `[${data.time}]` : '';
-
         const nameSpan = document.createElement('span');
         nameSpan.className = 'username';
         nameSpan.textContent = data.user + ":";
         nameSpan.style.color = data.color;
-
         const textSpan = document.createElement('span');
         textSpan.textContent = data.msg;
-
-        // Ensure time appears first on the line
         if (data.time) msgLine.appendChild(timeSpan);
         msgLine.appendChild(nameSpan);
         msgLine.appendChild(textSpan);
@@ -201,30 +206,17 @@
     messageForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const text = messageInput.value.trim();
-        if (text) {
-            // Generate current time and send it with the message
+        if (text && myUsername !== "") {
             const currentTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             socket.emit('send_message', { msg: text, user: myUsername, color: myColor, time: currentTime });
             messageInput.value = '';
         }
     });
 
-    socket.on('load_history', (history) => {
-        chatBox.innerHTML = '';
-        history.forEach(appendMessage);
-    });
-
-    socket.on('receive_message', (data) => {
-        appendMessage(data);
-    });
-
-    clearBtn.addEventListener('click', () => {
-        socket.emit('clear_chat');
-    });
-
-    socket.on('chat_cleared', () => {
-        chatBox.innerHTML = '';
-    });
+    socket.on('load_history', (history) => { chatBox.innerHTML = ''; history.forEach(appendMessage); });
+    socket.on('receive_message', (data) => appendMessage(data));
+    clearBtn.addEventListener('click', () => socket.emit('clear_chat'));
+    socket.on('chat_cleared', () => chatBox.innerHTML = '');
 </script>
 </body>
 </html>
