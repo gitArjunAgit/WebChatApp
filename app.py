@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 
 app = Flask(__name__)
@@ -7,6 +7,8 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 chat_history = []
 typing_users = set()
+# Track active users by mapping session IDs to user details
+active_users = {}
 
 @app.route('/')
 def index():
@@ -15,6 +17,23 @@ def index():
 @socketio.on('connect')
 def handle_connect():
     emit('load_history', chat_history)
+
+@socketio.on('join_domain')
+def handle_join(data):
+    # Register user session details
+    active_users[request.sid] = {"user": data['user'], "color": data['color']}
+    emit('update_users', list(active_users.values()), broadcast=True)
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    # Remove user if they exit or close the tab
+    if request.sid in active_users:
+        user_data = active_users[request.sid]
+        if user_data['user'] in typing_users:
+            typing_users.remove(user_data['user'])
+            emit('update_typing', list(typing_users), broadcast=True)
+        del active_users[request.sid]
+    emit('update_users', list(active_users.values()), broadcast=True)
 
 @socketio.on('send_message')
 def handle_send_message(data):

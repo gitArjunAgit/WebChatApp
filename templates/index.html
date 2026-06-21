@@ -121,18 +121,24 @@
             backdrop-filter: blur(8px);
         }
 
-        #typing-panel {
+        #sidebar-panel {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            max-height: 600px;
+        }
+
+        .side-box {
             background: rgba(11, 7, 38, 0.6);
-            padding: 25px;
+            padding: 20px;
             border-radius: 24px;
             border: 2px solid rgba(246, 211, 101, 0.2);
             backdrop-filter: blur(8px);
-            max-height: 600px;
             overflow-y: auto;
         }
 
-        #typing-panel h3 {
+        .side-box h3 {
             margin-top: 0;
             color: #f6d365;
             text-transform: uppercase;
@@ -140,6 +146,12 @@
             letter-spacing: 2px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding-bottom: 12px;
+        }
+
+        .user-item {
+            padding: 8px 12px;
+            font-size: 0.9em;
+            font-weight: bold;
         }
 
         .typing-pill {
@@ -285,9 +297,15 @@
         </form>
     </div>
 
-    <div id="typing-panel">
-        <h3>Transmitting...</h3>
-        <div id="typing-list"></div>
+    <div id="sidebar-panel">
+        <div class="side-box" style="flex: 1;">
+            <h3>Active Spirits</h3>
+            <div id="users-list"></div>
+        </div>
+        <div class="side-box" style="flex: 1;">
+            <h3>Transmitting...</h3>
+            <div id="typing-list"></div>
+        </div>
     </div>
 </div>
 
@@ -304,6 +322,7 @@
     const clearBtn = document.getElementById('clear-btn');
     const statusBar = document.getElementById('status-bar');
     const typingList = document.getElementById('typing-list');
+    const usersList = document.getElementById('users-list');
 
     let myUsername = "";
     const cosmicColors = ["#f6d365", "#38bdf8", "#4ade80", "#f43f5e", "#c084fc", "#fb923c", "#22d3ee", "#e879f9", "#fb7185", "#a3e635"];
@@ -313,6 +332,9 @@
     socket.on('connect', () => {
         statusBar.textContent = "● You are connected to the domain";
         statusBar.style.color = "#4ade80";
+        if (myUsername) {
+            socket.emit('join_domain', { user: myUsername, color: myColor });
+        }
     });
 
     socket.on('disconnect', () => {
@@ -325,6 +347,7 @@
         const enteredName = usernameInput.value.trim();
         if (enteredName) {
             myUsername = enteredName;
+            socket.emit('join_domain', { user: myUsername, color: myColor });
             entryPortal.style.opacity = '0';
             setTimeout(() => {
                 entryPortal.style.display = 'none';
@@ -396,6 +419,17 @@
                 div.textContent = `${user} is typing...`;
                 typingList.appendChild(div);
             }
+        });
+    });
+
+    socket.on('update_users', (users) => {
+        usersList.innerHTML = '';
+        users.forEach(u => {
+            const div = document.createElement('div');
+            div.className = 'user-item';
+            div.style.color = u.color;
+            div.textContent = `● ${u.user} ${u.user === myUsername ? '(You)' : ''}`;
+            usersList.appendChild(div);
         });
     });
 
