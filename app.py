@@ -1,7 +1,9 @@
 import os
 from flask import Flask, render_template, request
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from pymongo import MongoClient
+import uuid
+import json
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -33,6 +35,132 @@ else:
 typing_users = set()
 active_users = {}
 pong_queue = []
+active_games = {}  # game_id -> game_state
+
+
+class PongGame:
+    def __init__(self, player1_sid, player1_name, player2_sid, player2_name):
+        self.game_id = str(uuid.uuid4())
+        self.player1_sid = player1_sid
+        self.player1_name = player1_name
+        self.player2_sid = player2_sid
+        self.player2_name = player2_name
+        
+        # Game state
+        self.width = 800
+        self.height = 400
+        self.ball_x = self.width / 2
+        self.ball_y = self.height / 2
+        self.ball_vx = 6
+        self.ball_vy = 6
+        self.ball_radius = 8
+        
+        # Paddles
+        self.paddle_width = 10
+        self.paddle_height = 80
+        self.paddle_speed = 8
+        
+        # Player 1 (left paddle)
+        self.p1_y = (self.height - self.paddle_height) / 2
+        self.p1_score = 0
+        self.p1_dy = 0
+        
+        # Player 2 (right paddle)
+        self.p2_y = (self.height - self.paddle_height) / 2
+        self.p2_dy = 0
+        self.p2_score = 0
+        
+        self.running = True
+        self.room = self.game_id
+    
+    def update(self):
+        if not self.running:
+            return
+        
+        # Move paddles
+        self.p1_y += self.p1_dy
+        self.p2_y += self.p2_dy
+        
+        # Boundary check for paddles
+        if self.p1_y < 0:
+            self.p1_y = 0
+        if self.p1_y + self.paddle_height > self.height:
+            self.p1_y = self.height - self.paddle_height
+        if self.p2_y < 0:
+            self.p2_y = 0
+        if self.p2_y + self.paddle_height > self.height:
+            self.p2_y = self.height - self.paddle_height
+        
+        # Move ball
+        self.ball_x += self.ball_vx
+        self.ball_y += self.ball_vy
+        
+        # Ball collision with top/bottom
+        if self.ball_y - self.ball_radius < 0 or self.ball_y + self.ball_radius > self.height:
+            self.ball_vy = -self.ball_vy
+            self.ball_y = max(self.ball_radius, min(self.height - self.ball_radius, self.ball_y))
+        
+        # Ball collision with paddles
+        # Left paddle
+        if (self.ball_x - self.ball_radius < self.paddle_width and
+            self.p1_y < self.ball_y < self.p1_y + self.paddle_height):
+            self.ball_vx = -self.ball_vx
+            self.ball_x = self.paddle_width + self.ball_radius
+            # Add spin based on where it hits the paddle
+            hit_pos = (self.ball_y - self.p1_y) / self.paddle_height - 0.5
+            self.ball_vy += hit_pos * 4
+        
+        # Right paddle
+        if (self.ball_x + self.ball_radius > self.width - self.paddle_width and
+            self.p2_y < self.ball_y < self.p2_y + self.paddle_height):
+            self.ball_vx = -self.ball_vx
+            self.ball_x = self.width - self.paddle_width - self.ball_radius
+            # Add spin based on where it hits the paddle
+            hit_pos = (self.ball_y - self.p2_y) / self.paddle_height - 0.5
+            self.ball_vy += hit_pos * 4
+        
+        # Scoring
+        if self.ball_x < 0:
+            self.p2_score += 1
+            self.reset_ball()
+        elif self.ball_x > self.width:
+            self.p1_score += 1
+            self.reset_ball()
+        
+        # Cap ball speed
+        max_speed = 12
+        if abs(self.ball_vx) > max_speed:
+            self.ball_vx = max_speed if self.ball_vx > 0 else -max_speed
+        if abs(self.ball_vy) > max_speed:
+            self.ball_vy = max_speed if self.ball_vy > 0 else -max_speed
+    
+    def reset_ball(self):
+        self.ball_x = self.width / 2
+        self.ball_y = self.height / 2
+        self.ball_vx = 6 if self.p1_score > self.p2_score else -6
+        self.ball_vy = 0
+    
+    def get_state(self):
+        return {
+            'game_id': self.game_id,
+            'ball': {'x': self.ball_x, 'y': self.ball_y, 'radius': self.ball_radius},
+            'p1': {
+                'name': self.player1_name,
+                'y': self.p1_y,
+                'score': self.p1_score,
+                'width': self.paddle_width,
+                'height': self.paddle_height
+            },
+            'p2': {
+                'name': self.player2_name,
+                'y': self.p2_y,
+                'score': self.p2_score,
+                'width': self.paddle_width,
+                'height': self.paddle_height
+            },
+            'width': self.width,
+            'height': self.height
+        }
 
 
 @app.route('/')
@@ -76,6 +204,13 @@ def handle_disconnect():
         if p['sid'] == request.sid:
             pong_queue.remove(p)
             socketio.emit('pong_queue_update', {'count': len(pong_queue)})
+    
+    # If user was in a game, end the game
+    for game_id, game in list(active_games.items()):
+        if request.sid in [game.player1_sid, game.player2_sid]:
+            game.running = False
+            socketio.emit('game_ended', {'reason': 'opponent_disconnected'}, room=game_id)
+            del active_games[game_id]
 
 
 @socketio.on('send_message')
@@ -128,10 +263,90 @@ def handle_join_pong(data):
     if len(pong_queue) >= 2:
         p1 = pong_queue.pop(0)
         p2 = pong_queue.pop(0)
-        # Privately teleport only these two users
-        socketio.emit('teleport_to_arena', room=p1['sid'])
-        socketio.emit('teleport_to_arena', room=p2['sid'])
+        
+        # Create game instance
+        game = PongGame(p1['sid'], p1['user'], p2['sid'], p2['user'])
+        active_games[game.game_id] = game
+        
+        # Add both players to the game room
+        join_room(game.game_id, sid=p1['sid'])
+        join_room(game.game_id, sid=p2['sid'])
+        
+        # Send game start to both players
+        socketio.emit('game_started', {
+            'game_id': game.game_id,
+            'player_number': 1,
+            'opponent': p2['user']
+        }, room=p1['sid'])
+        
+        socketio.emit('game_started', {
+            'game_id': game.game_id,
+            'player_number': 2,
+            'opponent': p1['user']
+        }, room=p2['sid'])
+        
         socketio.emit('pong_queue_update', {'count': len(pong_queue)})
+
+
+@socketio.on('paddle_move')
+def handle_paddle_move(data):
+    game_id = data.get('game_id')
+    direction = data.get('direction')  # 'up', 'down', 'stop'
+    player_number = data.get('player_number')
+    
+    if game_id not in active_games:
+        return
+    
+    game = active_games[game_id]
+    
+    if player_number == 1:
+        if direction == 'up':
+            game.p1_dy = -game.paddle_speed
+        elif direction == 'down':
+            game.p1_dy = game.paddle_speed
+        elif direction == 'stop':
+            game.p1_dy = 0
+    else:
+        if direction == 'up':
+            game.p2_dy = -game.paddle_speed
+        elif direction == 'down':
+            game.p2_dy = game.paddle_speed
+        elif direction == 'stop':
+            game.p2_dy = 0
+
+
+@socketio.on('request_game_state')
+def handle_request_game_state(data):
+    game_id = data.get('game_id')
+    if game_id in active_games:
+        game = active_games[game_id]
+        emit('game_state_update', game.get_state(), room=game_id)
+
+
+def game_loop():
+    while True:
+        for game_id, game in list(active_games.items()):
+            if game.running:
+                game.update()
+                socketio.emit('game_state_update', game.get_state(), room=game_id)
+                
+                # Check for win condition (first to 5)
+                if game.p1_score >= 5 or game.p2_score >= 5:
+                    winner = 1 if game.p1_score >= 5 else 2
+                    socketio.emit('game_ended', {
+                        'winner': winner,
+                        'p1_score': game.p1_score,
+                        'p2_score': game.p2_score,
+                        'winner_name': game.player1_name if winner == 1 else game.player2_name
+                    }, room=game_id)
+                    game.running = False
+                    del active_games[game_id]
+        
+        socketio.sleep(0.016)  # ~60 FPS
+
+
+# Start game loop in background
+socketio.start_background_task(game_loop)
 
 
 if __name__ == '__main__':
