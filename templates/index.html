@@ -339,6 +339,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
+            overflow: auto;
         }
 
         #pong-game-container {
@@ -346,6 +347,7 @@
             flex-direction: column;
             align-items: center;
             gap: 20px;
+            padding: 20px;
         }
 
         #pong-canvas {
@@ -353,16 +355,18 @@
             border: 3px solid #f6d365;
             box-shadow: 0 0 30px rgba(246, 211, 101, 0.5);
             display: block;
+            max-width: 95vw;
+            max-height: 80vh;
         }
 
         .pong-info {
             display: flex;
             justify-content: space-around;
             width: 100%;
-            max-width: 800px;
+            max-width: 1200px;
             color: #f6d365;
             font-weight: bold;
-            font-size: 1.2em;
+            font-size: 1.5em;
             text-align: center;
         }
 
@@ -371,7 +375,7 @@
         }
 
         .pong-score {
-            font-size: 2em;
+            font-size: 2.5em;
             color: #1BFF9B;
             margin-top: 5px;
         }
@@ -435,6 +439,18 @@
             font-size: 1.8em;
             color: #FFD700;
             margin: 20px 0;
+        }
+
+        .crown-badge {
+            display: inline-block;
+            font-size: 1.5em;
+            margin-left: 5px;
+            animation: bounce 0.5s ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
     </style>
 </head>
@@ -523,7 +539,7 @@
 <div id="pong-arena">
     <div id="pong-game-container">
         <h1>⚔️ Cosmic Pong Arena ⚔️</h1>
-        <canvas id="pong-canvas" width="800" height="400"></canvas>
+        <canvas id="pong-canvas" width="1200" height="600"></canvas>
         <div class="pong-info">
             <div class="pong-info-section">
                 <div id="pong-p1-name">Player 1</div>
@@ -586,12 +602,46 @@
     let playerNumber = null;
     let currentGameState = null;
     let keysPressed = {};
+    let lastWinner = null;
+
+    // Load saved session from localStorage
+    function loadSession() {
+        const saved = localStorage.getItem('userSession');
+        if (saved) {
+            try {
+                const session = JSON.parse(saved);
+                myUsername = session.username;
+                myColor = session.color;
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    // Save session to localStorage
+    function saveSession() {
+        localStorage.setItem('userSession', JSON.stringify({
+            username: myUsername,
+            color: myColor
+        }));
+    }
+
+    // Clear session
+    function clearSession() {
+        localStorage.removeItem('userSession');
+    }
 
     socket.on('connect', () => {
         statusBar.textContent = "● You are connected to the domain";
         statusBar.style.color = "#4ade80";
-        if (myUsername) {
+        
+        // Try to restore session
+        if (loadSession()) {
             socket.emit('join_domain', { user: myUsername, color: myColor });
+            entryPortal.style.display = 'none';
+            mainLayout.style.display = 'flex';
         }
     });
 
@@ -606,6 +656,7 @@
         if (enteredName) {
             myUsername = enteredName;
             myColor = colorPicker.value;
+            saveSession();
             socket.emit('join_domain', { user: myUsername, color: myColor });
             entryPortal.style.opacity = '0';
             setTimeout(() => {
@@ -626,7 +677,14 @@
 
         const nameSpan = document.createElement('span');
         nameSpan.className = 'username';
-        nameSpan.textContent = data.user + ":";
+        let nameText = data.user + ":";
+        
+        // Add crown if this user won the last game
+        if (lastWinner && data.user === lastWinner) {
+            nameText += ' <span class="crown-badge">👑</span>';
+        }
+        
+        nameSpan.innerHTML = nameText;
         nameSpan.style.color = data.color;
 
         const textSpan = document.createElement('span');
@@ -695,9 +753,13 @@
         users.forEach(u => {
             const div = document.createElement('div');
             div.className = 'user-item';
+            let userDisplay = u.user;
+            if (lastWinner && u.user === lastWinner) {
+                userDisplay += ' 👑';
+            }
             div.innerHTML = `
                 <span style="color: ${u.color}; margin-right: 8px;">●</span>
-                <span style="color: white;">${u.user} ${u.user === myUsername ? '(You)' : ''}</span>
+                <span style="color: white;">${userDisplay} ${u.user === myUsername ? '(You)' : ''}</span>
             `;
             usersList.appendChild(div);
         });
@@ -762,12 +824,14 @@
         
         const reason = data.reason || 'finished';
         if (reason === 'opponent_disconnected') {
+            lastWinner = myUsername;
             showGameEndedOverlay('Opponent Disconnected!', 'You win by default!', '5', '0');
         } else {
+            lastWinner = data.winner_name;
             const playerWon = (data.winner === playerNumber);
             showGameEndedOverlay(
                 playerWon ? '🎉 YOU WIN! 🎉' : '😢 You Lost',
-                `${data.winner_name} wins!`,
+                `${data.winner_name} 👑 wins!`,
                 data.p1_score,
                 data.p2_score
             );
