@@ -57,6 +57,8 @@ def handle_join(data):
     user_color = data.get('color', USER_COLORS[0])
     active_users[request.sid] = {"user": data['user'], "color": user_color}
     emit('update_users', list(active_users.values()), broadcast=True)
+    # Send the current queue status to this user immediately upon joining
+    emit('pong_queue_update', {'count': len(pong_queue)})
 
 
 @socketio.on('disconnect')
@@ -73,7 +75,7 @@ def handle_disconnect():
     for p in pong_queue:
         if p['sid'] == request.sid:
             pong_queue.remove(p)
-            emit('pong_queue_update', {'count': len(pong_queue)}, broadcast=True)
+            socketio.emit('pong_queue_update', {'count': len(pong_queue)})
 
 
 @socketio.on('send_message')
@@ -120,15 +122,16 @@ def handle_join_pong(data):
     if not any(p['sid'] == sid for p in pong_queue):
         pong_queue.append({'sid': sid, 'user': data['user']})
 
-    emit('pong_queue_update', {'count': len(pong_queue)}, broadcast=True)
+    # Broadcast globally using socketio.emit to ensure everyone sees the update
+    socketio.emit('pong_queue_update', {'count': len(pong_queue)})
 
     if len(pong_queue) >= 2:
         p1 = pong_queue.pop(0)
         p2 = pong_queue.pop(0)
         # Privately teleport only these two users
-        emit('teleport_to_arena', room=p1['sid'])
-        emit('teleport_to_arena', room=p2['sid'])
-        emit('pong_queue_update', {'count': len(pong_queue)}, broadcast=True)
+        socketio.emit('teleport_to_arena', room=p1['sid'])
+        socketio.emit('teleport_to_arena', room=p2['sid'])
+        socketio.emit('pong_queue_update', {'count': len(pong_queue)})
 
 
 if __name__ == '__main__':
