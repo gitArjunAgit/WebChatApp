@@ -324,6 +324,118 @@
             background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
             color: #fff;
         }
+
+        /* Pong Arena Styles */
+        #pong-arena {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #020010;
+            z-index: 9999;
+            color: #f6d365;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #pong-game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        #pong-canvas {
+            background: #0b0726;
+            border: 3px solid #f6d365;
+            box-shadow: 0 0 30px rgba(246, 211, 101, 0.5);
+            display: block;
+        }
+
+        .pong-info {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            max-width: 800px;
+            color: #f6d365;
+            font-weight: bold;
+            font-size: 1.2em;
+            text-align: center;
+        }
+
+        .pong-info-section {
+            flex: 1;
+        }
+
+        .pong-score {
+            font-size: 2em;
+            color: #1BFF9B;
+            margin-top: 5px;
+        }
+
+        #exit-pong-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 20px;
+        }
+
+        #exit-pong-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .game-ended-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(2, 0, 16, 0.95);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .game-ended-box {
+            background: rgba(11, 7, 38, 0.9);
+            padding: 40px;
+            border-radius: 24px;
+            border: 2px solid #a855f7;
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.4);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .game-ended-box h1 {
+            color: #1BFF9B;
+            font-size: 2.5em;
+            margin: 0 0 20px 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .game-ended-box p {
+            color: #cbd5e1;
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+
+        .final-score {
+            font-size: 1.8em;
+            color: #FFD700;
+            margin: 20px 0;
+        }
     </style>
 </head>
 <body>
@@ -394,7 +506,7 @@
     </div>
 
     <div id="sidebar-panel">
-        <button type="button" id="join-pong-btn" style="width: 100%; padding: 12px; margin-bottom: 20px; background: #a855f7; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold;">
+        <button type="button" id="join-pong-btn" style="width: 100%; padding: 12px; margin-bottom: 20px; background: #a855f7; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase;">
             Join Cosmic Pong
         </button>
         <div class="side-box" style="flex: 1;">
@@ -408,9 +520,25 @@
     </div>
 </div>
 
-<div id="pong-arena" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #020010; z-index: 9999; color: #f6d365; flex-direction: column; justify-content: center; align-items: center;">
-    <h1>Cosmic Pong Arena</h1>
-    <p>Awaiting game construction...</p>
+<div id="pong-arena">
+    <div id="pong-game-container">
+        <h1>⚔️ Cosmic Pong Arena ⚔️</h1>
+        <canvas id="pong-canvas" width="800" height="400"></canvas>
+        <div class="pong-info">
+            <div class="pong-info-section">
+                <div id="pong-p1-name">Player 1</div>
+                <div class="pong-score" id="pong-p1-score">0</div>
+            </div>
+            <div class="pong-info-section">
+                <div style="font-size: 1.5em; color: #FFD700;">VS</div>
+            </div>
+            <div class="pong-info-section">
+                <div id="pong-p2-name">Player 2</div>
+                <div class="pong-score" id="pong-p2-score">0</div>
+            </div>
+        </div>
+        <button id="exit-pong-btn">Exit Arena</button>
+    </div>
 </div>
 
 <script>
@@ -447,10 +575,17 @@
     // Pong elements
     const joinPongBtn = document.getElementById('join-pong-btn');
     const pongArena = document.getElementById('pong-arena');
+    const pongCanvas = document.getElementById('pong-canvas');
+    const ctx = pongCanvas.getContext('2d');
+    const exitPongBtn = document.getElementById('exit-pong-btn');
 
     let myUsername = "";
     let myColor = "";
     let typingTimeout;
+    let currentGameId = null;
+    let playerNumber = null;
+    let currentGameState = null;
+    let keysPressed = {};
 
     socket.on('connect', () => {
         statusBar.textContent = "● You are connected to the domain";
@@ -576,9 +711,10 @@
         chatBox.innerHTML = '';
     });
 
-    // Pong listeners
+    // ============ PONG GAME LOGIC ============
+
     joinPongBtn.addEventListener('click', () => {
-        socket.emit('join_pong', { user: myUsername });
+        socket.emit('join_pong', { user: myUsername, color: myColor });
     });
 
     socket.on('pong_queue_update', (data) => {
@@ -591,10 +727,146 @@
         }
     });
 
-    socket.on('teleport_to_arena', () => {
-        document.getElementById('main-layout').style.display = 'none';
+    socket.on('game_started', (data) => {
+        console.log('Game started:', data);
+        currentGameId = data.game_id;
+        playerNumber = data.player_number;
+        
+        const p1Name = playerNumber === 1 ? myUsername : data.opponent;
+        const p2Name = playerNumber === 2 ? myUsername : data.opponent;
+        
+        document.getElementById('pong-p1-name').textContent = p1Name;
+        document.getElementById('pong-p2-name').textContent = p2Name;
+        
+        mainLayout.style.display = 'none';
         pongArena.style.display = 'flex';
+        
+        // Request initial game state
+        socket.emit('request_game_state', { game_id: currentGameId });
+        
+        // Start listening to keyboard input
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
     });
+
+    socket.on('game_state_update', (state) => {
+        currentGameState = state;
+        document.getElementById('pong-p1-score').textContent = state.p1.score;
+        document.getElementById('pong-p2-score').textContent = state.p2.score;
+        drawGame(state);
+    });
+
+    socket.on('game_ended', (data) => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
+        
+        const reason = data.reason || 'finished';
+        if (reason === 'opponent_disconnected') {
+            showGameEndedOverlay('Opponent Disconnected!', 'You win by default!', '5', '0');
+        } else {
+            const playerWon = (data.winner === playerNumber);
+            showGameEndedOverlay(
+                playerWon ? '🎉 YOU WIN! 🎉' : '😢 You Lost',
+                `${data.winner_name} wins!`,
+                data.p1_score,
+                data.p2_score
+            );
+        }
+    });
+
+    function handleKeyDown(e) {
+        keysPressed[e.key] = true;
+        
+        if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
+            e.preventDefault();
+            socket.emit('paddle_move', {
+                game_id: currentGameId,
+                player_number: playerNumber,
+                direction: 'up'
+            });
+        } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
+            e.preventDefault();
+            socket.emit('paddle_move', {
+                game_id: currentGameId,
+                player_number: playerNumber,
+                direction: 'down'
+            });
+        }
+    }
+
+    function handleKeyUp(e) {
+        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 'W' || e.key === 's' || e.key === 'S') {
+            e.preventDefault();
+            socket.emit('paddle_move', {
+                game_id: currentGameId,
+                player_number: playerNumber,
+                direction: 'stop'
+            });
+        }
+    }
+
+    function drawGame(state) {
+        // Clear canvas
+        ctx.fillStyle = '#0b0726';
+        ctx.fillRect(0, 0, pongCanvas.width, pongCanvas.height);
+
+        // Draw center line
+        ctx.strokeStyle = 'rgba(246, 211, 101, 0.3)';
+        ctx.setLineDash([10, 10]);
+        ctx.beginPath();
+        ctx.moveTo(state.width / 2, 0);
+        ctx.lineTo(state.width / 2, state.height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw paddles with player colors
+        ctx.fillStyle = state.p1.color;
+        ctx.fillRect(0, state.p1.y, state.p1.width, state.p1.height);
+        
+        ctx.fillStyle = state.p2.color;
+        ctx.fillRect(state.width - state.p2.width, state.p2.y, state.p2.width, state.p2.height);
+
+        // Draw ball
+        ctx.fillStyle = '#f6d365';
+        ctx.beginPath();
+        ctx.arc(state.ball.x, state.ball.y, state.ball.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Draw glow effect on ball
+        ctx.strokeStyle = 'rgba(246, 211, 101, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(state.ball.x, state.ball.y, state.ball.radius + 5, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    exitPongBtn.addEventListener('click', () => {
+        document.removeEventListener('keydown', handleKeyDown);
+        document.removeEventListener('keyup', handleKeyUp);
+        
+        currentGameId = null;
+        playerNumber = null;
+        currentGameState = null;
+        
+        pongArena.style.display = 'none';
+        mainLayout.style.display = 'flex';
+    });
+
+    function showGameEndedOverlay(title, message, p1Score, p2Score) {
+        const overlay = document.createElement('div');
+        overlay.className = 'game-ended-overlay';
+        overlay.innerHTML = `
+            <div class="game-ended-box">
+                <h1>${title}</h1>
+                <p>${message}</p>
+                <div class="final-score">${p1Score} - ${p2Score}</div>
+                <button onclick="location.reload()" style="padding: 12px 24px; background: linear-gradient(135deg, #a855f7 0%, #fda085 100%); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase; width: 100%;">
+                    Return to Realm
+                </button>
+            </div>
+        `;
+        pongArena.appendChild(overlay);
+    }
 
     setInterval(() => {
         socket.emit('ping');
