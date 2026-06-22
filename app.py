@@ -49,18 +49,18 @@ class PongGame:
         self.player2_color = player2_color
         
         # Game state
-        self.width = 800
-        self.height = 400
+        self.width = 1200
+        self.height = 600
         self.ball_x = self.width / 2
         self.ball_y = self.height / 2
-        self.ball_vx = 6
-        self.ball_vy = 6
-        self.ball_radius = 8
+        self.ball_vx = 8
+        self.ball_vy = 8
+        self.ball_radius = 10
         
         # Paddles
-        self.paddle_width = 10
-        self.paddle_height = 80
-        self.paddle_speed = 8
+        self.paddle_width = 12
+        self.paddle_height = 100
+        self.paddle_speed = 12
         
         # Player 1 (left paddle)
         self.p1_y = (self.height - self.paddle_height) / 2
@@ -110,7 +110,7 @@ class PongGame:
             self.ball_x = self.paddle_width + self.ball_radius
             # Add spin based on where it hits the paddle
             hit_pos = (self.ball_y - self.p1_y) / self.paddle_height - 0.5
-            self.ball_vy += hit_pos * 4
+            self.ball_vy += hit_pos * 5
         
         # Right paddle
         if (self.ball_x + self.ball_radius > self.width - self.paddle_width and
@@ -119,7 +119,7 @@ class PongGame:
             self.ball_x = self.width - self.paddle_width - self.ball_radius
             # Add spin based on where it hits the paddle
             hit_pos = (self.ball_y - self.p2_y) / self.paddle_height - 0.5
-            self.ball_vy += hit_pos * 4
+            self.ball_vy += hit_pos * 5
         
         # Scoring
         if self.ball_x < 0:
@@ -130,7 +130,7 @@ class PongGame:
             self.reset_ball()
         
         # Cap ball speed
-        max_speed = 12
+        max_speed = 15
         if abs(self.ball_vx) > max_speed:
             self.ball_vx = max_speed if self.ball_vx > 0 else -max_speed
         if abs(self.ball_vy) > max_speed:
@@ -139,7 +139,7 @@ class PongGame:
     def reset_ball(self):
         self.ball_x = self.width / 2
         self.ball_y = self.height / 2
-        self.ball_vx = 6 if self.p1_score > self.p2_score else -6
+        self.ball_vx = 8 if self.p1_score > self.p2_score else -8
         self.ball_vy = 0
     
     def get_state(self):
