@@ -32,6 +32,7 @@ else:
 
 typing_users = set()
 active_users = {}
+pong_queue = []
 
 
 @app.route('/')
@@ -67,6 +68,12 @@ def handle_disconnect():
             emit('update_typing', list(typing_users), broadcast=True)
         del active_users[request.sid]
         emit('update_users', list(active_users.values()), broadcast=True)
+
+    # Remove user from pong queue if they disconnect
+    for p in pong_queue:
+        if p['sid'] == request.sid:
+            pong_queue.remove(p)
+            emit('pong_queue_update', {'count': len(pong_queue)}, broadcast=True)
 
 
 @socketio.on('send_message')
@@ -104,6 +111,24 @@ def handle_stop_typing(data):
     if data['user'] in typing_users:
         typing_users.remove(data['user'])
     emit('update_typing', list(typing_users), broadcast=True)
+
+
+@socketio.on('join_pong')
+def handle_join_pong(data):
+    sid = request.sid
+    # Prevent the same user from taking both slots
+    if not any(p['sid'] == sid for p in pong_queue):
+        pong_queue.append({'sid': sid, 'user': data['user']})
+
+    emit('pong_queue_update', {'count': len(pong_queue)}, broadcast=True)
+
+    if len(pong_queue) >= 2:
+        p1 = pong_queue.pop(0)
+        p2 = pong_queue.pop(0)
+        # Privately teleport only these two users
+        emit('teleport_to_arena', room=p1['sid'])
+        emit('teleport_to_arena', room=p2['sid'])
+        emit('pong_queue_update', {'count': len(pong_queue)}, broadcast=True)
 
 
 if __name__ == '__main__':
