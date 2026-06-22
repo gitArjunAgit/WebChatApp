@@ -39,12 +39,14 @@ active_games = {}  # game_id -> game_state
 
 
 class PongGame:
-    def __init__(self, player1_sid, player1_name, player2_sid, player2_name):
+    def __init__(self, player1_sid, player1_name, player1_color, player2_sid, player2_name, player2_color):
         self.game_id = str(uuid.uuid4())
         self.player1_sid = player1_sid
         self.player1_name = player1_name
+        self.player1_color = player1_color
         self.player2_sid = player2_sid
         self.player2_name = player2_name
+        self.player2_color = player2_color
         
         # Game state
         self.width = 800
@@ -146,6 +148,7 @@ class PongGame:
             'ball': {'x': self.ball_x, 'y': self.ball_y, 'radius': self.ball_radius},
             'p1': {
                 'name': self.player1_name,
+                'color': self.player1_color,
                 'y': self.p1_y,
                 'score': self.p1_score,
                 'width': self.paddle_width,
@@ -153,6 +156,7 @@ class PongGame:
             },
             'p2': {
                 'name': self.player2_name,
+                'color': self.player2_color,
                 'y': self.p2_y,
                 'score': self.p2_score,
                 'width': self.paddle_width,
@@ -200,7 +204,7 @@ def handle_disconnect():
         emit('update_users', list(active_users.values()), broadcast=True)
 
     # Remove user from pong queue if they disconnect
-    for p in pong_queue:
+    for p in pong_queue[:]:
         if p['sid'] == request.sid:
             pong_queue.remove(p)
             socketio.emit('pong_queue_update', {'count': len(pong_queue)})
@@ -253,9 +257,12 @@ def handle_stop_typing(data):
 @socketio.on('join_pong')
 def handle_join_pong(data):
     sid = request.sid
+    user = data.get('user')
+    color = data.get('color')
+    
     # Prevent the same user from taking both slots
     if not any(p['sid'] == sid for p in pong_queue):
-        pong_queue.append({'sid': sid, 'user': data['user']})
+        pong_queue.append({'sid': sid, 'user': user, 'color': color})
 
     # Broadcast globally using socketio.emit to ensure everyone sees the update
     socketio.emit('pong_queue_update', {'count': len(pong_queue)})
@@ -264,25 +271,29 @@ def handle_join_pong(data):
         p1 = pong_queue.pop(0)
         p2 = pong_queue.pop(0)
         
-        # Create game instance
-        game = PongGame(p1['sid'], p1['user'], p2['sid'], p2['user'])
+        # Create game instance with colors
+        game = PongGame(p1['sid'], p1['user'], p1['color'], p2['sid'], p2['user'], p2['color'])
         active_games[game.game_id] = game
         
         # Add both players to the game room
         join_room(game.game_id, sid=p1['sid'])
         join_room(game.game_id, sid=p2['sid'])
         
-        # Send game start to both players
+        # Send game start to both players with colors
         socketio.emit('game_started', {
             'game_id': game.game_id,
             'player_number': 1,
-            'opponent': p2['user']
+            'opponent': p2['user'],
+            'opponent_color': p2['color'],
+            'your_color': p1['color']
         }, room=p1['sid'])
         
         socketio.emit('game_started', {
             'game_id': game.game_id,
             'player_number': 2,
-            'opponent': p1['user']
+            'opponent': p1['user'],
+            'opponent_color': p1['color'],
+            'your_color': p2['color']
         }, room=p2['sid'])
         
         socketio.emit('pong_queue_update', {'count': len(pong_queue)})
