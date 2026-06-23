@@ -413,6 +413,9 @@ def handle_leave_private(data):
     if not room_id or room_id not in private_rooms:
         return
 
+    user = get_user_by_sid(request.sid)
+
+
     private_rooms[room_id]['members'].discard(request.sid)
     leave_room(room_id)
 
@@ -489,3 +492,14 @@ socketio.start_background_task(game_loop)
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 10000))
     socketio.run(app, host='0.0.0.0', port=port)
+    'user': user
+    }, room=room_id)
+
+    emit('private_left', {
+        'room_id': room_id,
+        'user': user
+    }, room=request.sid)
+
+    if not private_rooms[room_id]['members']:
+        del private_rooms[room_id]
+
