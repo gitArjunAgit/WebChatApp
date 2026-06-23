@@ -167,6 +167,29 @@ class PongGame:
         }
 
 
+def notify_mentions(data):
+    msg = data.get('msg', '')
+    sender = data.get('user')
+    mentioned = set()
+    for token in msg.split():
+        if token.startswith('@') and len(token) > 1:
+            candidate = token[1:].strip('.,!?:;()[]{}<>"\'')
+            if candidate and candidate != sender:
+                mentioned.add(candidate)
+
+    if not mentioned:
+        return
+
+    recipients = [sid for sid, info in active_users.items() if info.get('user') in mentioned]
+    payload = {
+        'from_user': sender,
+        'message': msg,
+        'mentions': sorted(mentioned)
+    }
+    for sid in recipients:
+        socketio.emit('mention_notification', payload, room=sid)
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -228,6 +251,7 @@ def handle_send_message(data):
         typing_users.remove(data['user'])
         emit('update_typing', list(typing_users), broadcast=True)
 
+    notify_mentions(data)
     emit('receive_message', data, broadcast=True)
 
 
