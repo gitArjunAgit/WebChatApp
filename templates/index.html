@@ -429,7 +429,79 @@
             transform: scale(1.02);
         }
 
-        /* Pong Arena Styles */
+        /* Additions */
+        #join-pong-btn, #join-private-btn, #leave-private-btn {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 12px;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        #join-pong-btn {
+            background: #a855f7;
+        }
+
+        #join-private-btn {
+            background: #00D4FF;
+            color: #02111f;
+        }
+
+        #leave-private-btn {
+            background: #ef4444;
+            color: #fff;
+        }
+
+        .private-room-shell {
+            display: none;
+            margin-top: 20px;
+            padding: 18px;
+            border-radius: 20px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(0,0,0,0.25);
+        }
+
+        .private-members {
+            font-size: 0.9em;
+            color: #cbd5e1;
+            margin-bottom: 12px;
+        }
+
+        #private-chat-box {
+            height: 220px;
+            overflow-y: auto;
+            padding: 16px;
+            margin-bottom: 16px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 16px;
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+
+        #private-message-form {
+            display: flex;
+            gap: 12px;
+        }
+
+        #private-message-input {
+            flex-grow: 1;
+            padding: 16px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.15);
+            border-radius: 14px;
+            font-size: 1em;
+            color: #fff;
+        }
+
+        #private-message-input:focus {
+            outline: none;
+            border-color: #00D4FF;
+            box-shadow: 0 0 12px rgba(0, 212, 255, 0.35);
+        }
+
         #pong-arena {
             display: none;
             position: fixed;
@@ -650,12 +722,24 @@
             <button type="submit" id="send-btn">Send</button>
             <button type="button" id="clear-btn">Wipe</button>
         </form>
+
+        <div class="private-room-shell" id="private-room-shell">
+            <h3 style="color:#f6d365;margin-top:0;">Private Room</h3>
+            <div class="private-members" id="private-members">Waiting for 3 users...</div>
+            <div id="private-chat-box"></div>
+            <form id="private-message-form">
+                <input type="text" id="private-message-input" placeholder="Message the private room..." autocomplete="off">
+                <button type="submit" style="background:#00D4FF;color:#02111f;">Send Private</button>
+                <button type="button" id="leave-private-btn">Leave</button>
+            </form>
+        </div>
     </div>
 
     <div id="sidebar-panel">
         <button type="button" id="join-pong-btn" style="width: 100%; padding: 12px; margin-bottom: 20px; background: #a855f7; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase;">
             Join Cosmic Pong
         </button>
+        <button type="button" id="join-private-btn">Join Private Room</button>
         <button type="button" id="change-identity-btn">Change Identity</button>
         <div class="side-box" style="flex: 1;">
             <h3>Active Spirits</h3>
@@ -731,6 +815,13 @@
 
     // Pong elements
     const joinPongBtn = document.getElementById('join-pong-btn');
+    const joinPrivateBtn = document.getElementById('join-private-btn');
+    const privateRoomShell = document.getElementById('private-room-shell');
+    const privateMembers = document.getElementById('private-members');
+    const privateChatBox = document.getElementById('private-chat-box');
+    const privateMessageForm = document.getElementById('private-message-form');
+    const privateMessageInput = document.getElementById('private-message-input');
+    const leavePrivateBtn = document.getElementById('leave-private-btn');
     const pongArena = document.getElementById('pong-arena');
     const pongCanvas = document.getElementById('pong-canvas');
     const ctx = pongCanvas.getContext('2d');
@@ -744,6 +835,8 @@
     let currentGameState = null;
     let keysPressed = {};
     let lastWinner = null;
+    let currentPrivateRoomId = null;
+    let currentPrivateMembers = [];
 
     // Load saved session from localStorage
     function loadSession() {
@@ -774,10 +867,71 @@
         localStorage.removeItem('userSession');
     }
 
+    function appendMessage(data) {
+        const msgLine = document.createElement('div');
+        msgLine.className = 'message-line';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'timestamp';
+        timeSpan.textContent = data.time ? `[${data.time}]` : '';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'username';
+        let nameText = data.user + ":";
+
+        // Add crown if this user won the last game
+        if (lastWinner && data.user === lastWinner) {
+            nameText += ' <span class="crown-badge">👑</span>';
+        }
+
+        nameSpan.innerHTML = nameText;
+        nameSpan.style.color = data.color;
+
+        const textSpan = document.createElement('span');
+        const escapedMsg = (data.msg || '').replace(/[&<>"]|'/g, m => ({'&':'&#38;','<':'&#60;','>':'&#62;','"':'&#34;',"'":'&#39;'}[m]));
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
+
+        if (data.time) msgLine.appendChild(timeSpan);
+        msgLine.appendChild(nameSpan);
+        msgLine.appendChild(textSpan);
+        chatBox.appendChild(msgLine);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendPrivateMessage(data) {
+        const msgLine = document.createElement('div');
+        msgLine.className = 'message-line';
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'timestamp';
+        timeSpan.textContent = data.time ? `[${data.time}]` : '';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'username';
+        nameSpan.textContent = data.user + ':';
+        nameSpan.style.color = data.color || '#fff';
+
+        const textSpan = document.createElement('span');
+        textSpan.textContent = data.msg || '';
+
+        if (data.time) msgLine.appendChild(timeSpan);
+        msgLine.appendChild(nameSpan);
+        msgLine.appendChild(textSpan);
+        privateChatBox.appendChild(msgLine);
+        privateChatBox.scrollTop = privateChatBox.scrollHeight;
+    }
+
+    function renderPrivateMembers() {
+        privateMembers.textContent = currentPrivateMembers.length
+            ? `Room members: ${currentPrivateMembers.join(', ')}`
+            : 'Waiting for 3 users...';
+    }
+
     socket.on('connect', () => {
         statusBar.textContent = "● You are connected to the domain";
         statusBar.style.color = "#4ade80";
-        
+
         // Try to restore session
         if (loadSession()) {
             socket.emit('join_domain', { user: myUsername, color: myColor });
@@ -846,17 +1000,17 @@
         const nameSpan = document.createElement('span');
         nameSpan.className = 'username';
         let nameText = data.user + ":";
-        
+
         // Add crown if this user won the last game
         if (lastWinner && data.user === lastWinner) {
             nameText += ' <span class="crown-badge">👑</span>';
         }
-        
+
         nameSpan.innerHTML = nameText;
         nameSpan.style.color = data.color;
 
         const textSpan = document.createElement('span');
-        const escapedMsg = data.msg.replace(/[&<>"']/g, m => "&#" + m.charCodeAt(0) + ";");
+        const escapedMsg = (data.msg || '').replace(/[&<>"]|'/g, m => ({'&':'&#38;','<':'&#60;','>':'&#62;','"':'&#34;',"'":'&#39;'}[m]));
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
 
@@ -961,19 +1115,19 @@
         console.log('Game started:', data);
         currentGameId = data.game_id;
         playerNumber = data.player_number;
-        
+
         const p1Name = playerNumber === 1 ? myUsername : data.opponent;
         const p2Name = playerNumber === 2 ? myUsername : data.opponent;
-        
+
         document.getElementById('pong-p1-name').textContent = p1Name;
         document.getElementById('pong-p2-name').textContent = p2Name;
-        
+
         mainLayout.style.display = 'none';
         pongArena.style.display = 'flex';
-        
+
         // Request initial game state
         socket.emit('request_game_state', { game_id: currentGameId });
-        
+
         // Start listening to keyboard input
         document.addEventListener('keydown', handleKeyDown);
         document.addEventListener('keyup', handleKeyUp);
@@ -989,7 +1143,7 @@
     socket.on('game_ended', (data) => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
-        
+
         const reason = data.reason || 'finished';
         if (reason === 'opponent_disconnected') {
             lastWinner = myUsername;
@@ -1008,7 +1162,7 @@
 
     function handleKeyDown(e) {
         keysPressed[e.key] = true;
-        
+
         if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
             e.preventDefault();
             socket.emit('paddle_move', {
@@ -1054,7 +1208,7 @@
         // Draw paddles with player colors
         ctx.fillStyle = state.p1.color;
         ctx.fillRect(0, state.p1.y, state.p1.width, state.p1.height);
-        
+
         ctx.fillStyle = state.p2.color;
         ctx.fillRect(state.width - state.p2.width, state.p2.y, state.p2.width, state.p2.height);
 
@@ -1075,11 +1229,11 @@
     exitPongBtn.addEventListener('click', () => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
-        
+
         currentGameId = null;
         playerNumber = null;
         currentGameState = null;
-        
+
         pongArena.style.display = 'none';
         mainLayout.style.display = 'flex';
     });
@@ -1099,6 +1253,60 @@
         `;
         pongArena.appendChild(overlay);
     }
+
+    // Private room additions
+    joinPrivateBtn.addEventListener('click', () => {
+        socket.emit('join_private', { user: myUsername, color: myColor });
+    });
+
+    privateMessageForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const text = privateMessageInput.value.trim();
+        if (text && currentPrivateRoomId) {
+            socket.emit('private_message', {
+                room_id: currentPrivateRoomId,
+                user: myUsername,
+                color: myColor,
+                msg: text,
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            });
+            privateMessageInput.value = '';
+        }
+    });
+
+    leavePrivateBtn.addEventListener('click', () => {
+        if (currentPrivateRoomId) {
+            socket.emit('leave_private', { room_id: currentPrivateRoomId });
+        }
+    });
+
+    socket.on('private_queue_update', (data) => {
+        joinPrivateBtn.textContent = data.count >= 3
+            ? 'Private Room Starting...'
+            : `Join Private Room (${data.count}/3)`;
+    });
+
+    socket.on('private_started', (data) => {
+        currentPrivateRoomId = data.room_id;
+        currentPrivateMembers = data.members || [myUsername];
+        privateRoomShell.style.display = 'block';
+        renderPrivateMembers();
+    });
+
+    socket.on('private_message', (data) => {
+        if (data.room_id === currentPrivateRoomId) {
+            appendPrivateMessage(data);
+        }
+    });
+
+    socket.on('private_left', (data) => {
+        if (data.room_id === currentPrivateRoomId) {
+            currentPrivateRoomId = null;
+            currentPrivateMembers = [];
+            privateRoomShell.style.display = 'none';
+            privateChatBox.innerHTML = '';
+        }
+    });
 
     setInterval(() => {
         socket.emit('ping');
