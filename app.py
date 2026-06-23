@@ -37,6 +37,10 @@ active_users = {}
 pong_queue = []
 active_games = {}  # game_id -> game_state
 
+# NEW: 3-person private room support
+private_queue = []
+private_rooms = {}
+
 
 class PongGame:
     def __init__(self, player1_sid, player1_name, player1_color, player2_sid, player2_name, player2_color):
@@ -190,6 +194,13 @@ def notify_mentions(data):
         socketio.emit('mention_notification', payload, room=sid)
 
 
+def get_user_by_sid(sid):
+    user_data = active_users.get(sid)
+    if user_data:
+        return user_data.get('user')
+    return None
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -214,6 +225,7 @@ def handle_join(data):
     emit('update_users', list(active_users.values()), broadcast=True)
     # Send the current queue status to this user immediately upon joining
     emit('pong_queue_update', {'count': len(pong_queue)})
+    emit('private_queue_update', {'count': len(private_queue)})
 
 
 @socketio.on('disconnect')
@@ -231,13 +243,30 @@ def handle_disconnect():
         if p['sid'] == request.sid:
             pong_queue.remove(p)
             socketio.emit('pong_queue_update', {'count': len(pong_queue)})
-    
+
+    # NEW: Remove from private queue if they disconnect
+    for p in private_queue[:]:
+        if p['sid'] == request.sid:
+            private_queue.remove(p)
+            socketio.emit('private_queue_update', {'count': len(private_queue)})
+
     # If user was in a game, end the game
     for game_id, game in list(active_games.items()):
         if request.sid in [game.player1_sid, game.player2_sid]:
             game.running = False
             socketio.emit('game_ended', {'reason': 'opponent_disconnected'}, room=game_id)
             del active_games[game_id]
+
+    # NEW: Remove from private rooms
+    for room_id, room in list(private_rooms.items()):
+        if request.sid in room['members']:
+            room['members'].discard(request.sid)
+            socketio.emit('private_left', {
+                'room_id': room_id,
+                'user': get_user_by_sid(request.sid)
+            }, room=room_id)
+            if not room['members']:
+                del private_rooms[room_id]
 
 
 @socketio.on('send_message')
@@ -321,6 +350,79 @@ def handle_join_pong(data):
         }, room=p2['sid'])
         
         socketio.emit('pong_queue_update', {'count': len(pong_queue)})
+
+
+# NEW: 3-person private room
+@socketio.on('join_private')
+def handle_join_private(data):
+    sid = request.sid
+    user = data.get('user')
+    color = data.get('color')
+
+    if not any(p['sid'] == sid for p in private_queue):
+        private_queue.append({'sid': sid, 'user': user, 'color': color})
+
+    socketio.emit('private_queue_update', {'count': len(private_queue)})
+
+    if len(private_queue) >= 3:
+        p1 = private_queue.pop(0)
+        p2 = private_queue.pop(0)
+        p3 = private_queue.pop(0)
+
+        room_id = f"private-{uuid.uuid4()}"
+        private_rooms[room_id] = {
+            'members': {p1['sid'], p2['sid'], p3['sid']},
+            'users': [p1['user'], p2['user'], p3['user']]
+        }
+
+        join_room(room_id, sid=p1['sid'])
+        join_room(room_id, sid=p2['sid'])
+        join_room(room_id, sid=p3['sid'])
+
+        socketio.emit('private_started', {
+            'room_id': room_id,
+            'player_number': 1,
+            'members': [p1['user'], p2['user'], p3['user']]
+        }, room=p1['sid'])
+
+        socketio.emit('private_started', {
+            'room_id': room_id,
+            'player_number': 2,
+            'members': [p1['user'], p2['user'], p3['user']]
+        }, room=p2['sid'])
+
+        socketio.emit('private_started', {
+            'room_id': room_id,
+            'player_number': 3,
+            'members': [p1['user'], p2['user'], p3['user']]
+        }, room=p3['sid'])
+
+        socketio.emit('private_queue_update', {'count': len(private_queue)})
+
+
+@socketio.on('private_message')
+def handle_private_message(data):
+    room_id = data.get('room_id')
+    if room_id in private_rooms:
+        emit('private_message', data, room=room_id)
+
+
+@socketio.on('leave_private')
+def handle_leave_private(data):
+    room_id = data.get('room_id')
+    if not room_id or room_id not in private_rooms:
+        return
+
+    private_rooms[room_id]['members'].discard(request.sid)
+    leave_room(room_id)
+
+    socketio.emit('private_left', {
+        'room_id': room_id,
+        'user': get_user_by_sid(request.sid)
+    }, room=room_id)
+
+    if not private_rooms[room_id]['members']:
+        del private_rooms[room_id]
 
 
 @socketio.on('paddle_move')
