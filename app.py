@@ -38,6 +38,13 @@ pong_queue = []
 active_games = {}  # game_id -> game_state
 
 
+def enrich_message_for_chat(data):
+    enriched = data.copy()
+    if enriched.get('winner_name'):
+        enriched['winner_name'] = enriched['winner_name']
+    return enriched
+
+
 class PongGame:
     def __init__(self, player1_sid, player1_name, player1_color, player2_sid, player2_name, player2_color):
         self.game_id = str(uuid.uuid4())
@@ -228,7 +235,7 @@ def handle_send_message(data):
         typing_users.remove(data['user'])
         emit('update_typing', list(typing_users), broadcast=True)
 
-    emit('receive_message', data, broadcast=True)
+    emit('receive_message', enrich_message_for_chat(data), broadcast=True)
 
 
 @socketio.on('clear_chat')
@@ -344,12 +351,20 @@ def game_loop():
                 # Check for win condition (first to 5)
                 if game.p1_score >= 5 or game.p2_score >= 5:
                     winner = 1 if game.p1_score >= 5 else 2
+                    winner_name = game.player1_name if winner == 1 else game.player2_name
                     socketio.emit('game_ended', {
                         'winner': winner,
                         'p1_score': game.p1_score,
                         'p2_score': game.p2_score,
-                        'winner_name': game.player1_name if winner == 1 else game.player2_name
+                        'winner_name': winner_name
                     }, room=game_id)
+                    socketio.emit('receive_message', {
+                        'msg': f'won Cosmic Pong and claimed the crown 👑',
+                        'user': winner_name,
+                        'color': game.player1_color if winner == 1 else game.player2_color,
+                        'time': None,
+                        'winner_name': winner_name
+                    }, broadcast=True)
                     game.running = False
                     del active_games[game_id]
         

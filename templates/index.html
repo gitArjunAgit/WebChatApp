@@ -998,91 +998,46 @@
             lastWinner = data.winner_name;
             const playerWon = (data.winner === playerNumber);
             showGameEndedOverlay(
-                playerWon ? '🎉 YOU WIN! 🎉' : '😢 You Lost',
-                `${data.winner_name} 👑 wins!`,
+                playerWon ? 'Victory!' : 'Defeat!',
+                playerWon ? 'You claimed the crown!' : 'The crown belongs to another.',
                 data.p1_score,
                 data.p2_score
             );
         }
+        socket.emit('clear_chat');
     });
 
     function handleKeyDown(e) {
-        keysPressed[e.key] = true;
-        
+        if (!currentGameId || !playerNumber) return;
         if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
-            e.preventDefault();
-            socket.emit('paddle_move', {
-                game_id: currentGameId,
-                player_number: playerNumber,
-                direction: 'up'
-            });
+            socket.emit('paddle_move', { game_id: currentGameId, direction: 'up', player_number: playerNumber });
         } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
-            e.preventDefault();
-            socket.emit('paddle_move', {
-                game_id: currentGameId,
-                player_number: playerNumber,
-                direction: 'down'
-            });
+            socket.emit('paddle_move', { game_id: currentGameId, direction: 'down', player_number: playerNumber });
         }
     }
 
     function handleKeyUp(e) {
-        if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'w' || e.key === 'W' || e.key === 's' || e.key === 'S') {
-            e.preventDefault();
-            socket.emit('paddle_move', {
-                game_id: currentGameId,
-                player_number: playerNumber,
-                direction: 'stop'
-            });
+        if (!currentGameId || !playerNumber) return;
+        if (['ArrowUp', 'ArrowDown', 'w', 'W', 's', 'S'].includes(e.key)) {
+            socket.emit('paddle_move', { game_id: currentGameId, direction: 'stop', player_number: playerNumber });
         }
     }
 
     function drawGame(state) {
-        // Clear canvas
+        ctx.clearRect(0, 0, pongCanvas.width, pongCanvas.height);
         ctx.fillStyle = '#0b0726';
         ctx.fillRect(0, 0, pongCanvas.width, pongCanvas.height);
 
-        // Draw center line
-        ctx.strokeStyle = 'rgba(246, 211, 101, 0.3)';
-        ctx.setLineDash([10, 10]);
-        ctx.beginPath();
-        ctx.moveTo(state.width / 2, 0);
-        ctx.lineTo(state.width / 2, state.height);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Draw paddles with player colors
-        ctx.fillStyle = state.p1.color;
-        ctx.fillRect(0, state.p1.y, state.p1.width, state.p1.height);
-        
-        ctx.fillStyle = state.p2.color;
-        ctx.fillRect(state.width - state.p2.width, state.p2.y, state.p2.width, state.p2.height);
-
-        // Draw ball
         ctx.fillStyle = '#f6d365';
         ctx.beginPath();
         ctx.arc(state.ball.x, state.ball.y, state.ball.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw glow effect on ball
-        ctx.strokeStyle = 'rgba(246, 211, 101, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(state.ball.x, state.ball.y, state.ball.radius + 5, 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.fillStyle = state.p1.color;
+        ctx.fillRect(0, state.p1.y, state.p1.width, state.p1.height);
+        ctx.fillStyle = state.p2.color;
+        ctx.fillRect(state.width - state.p2.width, state.p2.y, state.p2.width, state.p2.height);
     }
-
-    exitPongBtn.addEventListener('click', () => {
-        document.removeEventListener('keydown', handleKeyDown);
-        document.removeEventListener('keyup', handleKeyUp);
-        
-        currentGameId = null;
-        playerNumber = null;
-        currentGameState = null;
-        
-        pongArena.style.display = 'none';
-        mainLayout.style.display = 'flex';
-    });
 
     function showGameEndedOverlay(title, message, p1Score, p2Score) {
         const overlay = document.createElement('div');
