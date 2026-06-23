@@ -157,6 +157,92 @@
             font-size: 1.1em;
         }
 
+        /* Change Identity Modal */
+        #change-identity-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(2, 0, 16, 0.9);
+            backdrop-filter: blur(15px);
+            z-index: 150;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #change-identity-box {
+            background: rgba(11, 7, 38, 0.9);
+            padding: 40px;
+            border-radius: 24px;
+            border: 2px solid #a855f7;
+            box-shadow: 0 0 50px rgba(168, 85, 247, 0.4);
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+        }
+
+        #change-identity-box h1 {
+            color: #f6d365;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-top: 0;
+            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+        }
+
+        #change-identity-box p {
+            color: #cbd5e1;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+
+        #change-username-input, #change-color-picker {
+            width: 85%;
+            padding: 16px;
+            margin-bottom: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 14px;
+            font-size: 1.1em;
+            color: #fff;
+            text-align: center;
+        }
+
+        #change-username-input:focus, #change-color-picker:focus {
+            outline: none;
+            border-color: #a855f7;
+            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+        }
+
+        .change-identity-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        #confirm-change-btn, #cancel-change-btn {
+            width: 45%;
+            padding: 16px;
+            font-weight: 800;
+            border: none;
+            border-radius: 14px;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 1em;
+        }
+
+        #confirm-change-btn {
+            background: linear-gradient(135deg, #a855f7 0%, #fda085 100%);
+            color: #fff;
+        }
+
+        #cancel-change-btn {
+            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            color: #fff;
+        }
+
         #main-layout {
             display: none;
             gap: 25px;
@@ -323,6 +409,24 @@
         #clear-btn {
             background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
             color: #fff;
+        }
+
+        #change-identity-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            background: linear-gradient(135deg, #00D4FF 0%, #a855f7 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.9em;
+        }
+
+        #change-identity-btn:hover {
+            transform: scale(1.02);
         }
 
         /* Pong Arena Styles */
@@ -508,6 +612,33 @@
     </div>
 </div>
 
+<!-- Change Identity Modal -->
+<div id="change-identity-modal">
+    <div id="change-identity-box">
+        <h1>Rebrand</h1>
+        <p>Forge a new identity or shift your cosmic frequency.</p>
+        <form id="change-identity-form">
+            <input type="text" id="change-username-input" placeholder="Enter new display name..." required autocomplete="off" maxlength="20">
+            <select id="change-color-picker">
+                <option value="#FF6B6B">Nebula Pink</option>
+                <option value="#1BFF9B">Aurora Mint</option>
+                <option value="#FFD700">Star Gold</option>
+                <option value="#A855F7">Cosmic Violet</option>
+                <option value="#FB923C">Meteor Orange</option>
+                <option value="#00D4FF">Galactic Blue</option>
+                <option value="#FF00FF">Supernova Magenta</option>
+                <option value="#ADFF2F">Comet Green</option>
+                <option value="#FF4500">Solar Flare Red</option>
+                <option value="#9370DB">Interstellar Purple</option>
+            </select>
+            <div class="change-identity-buttons">
+                <button type="submit" id="confirm-change-btn">Confirm</button>
+                <button type="button" id="cancel-change-btn">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div id="main-layout">
     <div id="chat-container">
         <div id="status-bar">Connecting to the cosmos...</div>
@@ -525,6 +656,7 @@
         <button type="button" id="join-pong-btn" style="width: 100%; padding: 12px; margin-bottom: 20px; background: #a855f7; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase;">
             Join Cosmic Pong
         </button>
+        <button type="button" id="change-identity-btn">Change Identity</button>
         <div class="side-box" style="flex: 1;">
             <h3>Active Spirits</h3>
             <div id="users-list"></div>
@@ -587,6 +719,15 @@
     const statusBar = document.getElementById('status-bar');
     const typingList = document.getElementById('typing-list');
     const usersList = document.getElementById('users-list');
+
+    // Change Identity Elements
+    const changeIdentityModal = document.getElementById('change-identity-modal');
+    const changeIdentityForm = document.getElementById('change-identity-form');
+    const changeUsernameInput = document.getElementById('change-username-input');
+    const changeColorPicker = document.getElementById('change-color-picker');
+    const confirmChangeBtn = document.getElementById('confirm-change-btn');
+    const cancelChangeBtn = document.getElementById('cancel-change-btn');
+    const changeIdentityBtn = document.getElementById('change-identity-btn');
 
     // Pong elements
     const joinPongBtn = document.getElementById('join-pong-btn');
@@ -664,6 +805,33 @@
                 mainLayout.style.display = 'flex';
                 messageInput.focus();
             }, 500);
+        }
+    });
+
+    // Change Identity Modal Handlers
+    changeIdentityBtn.addEventListener('click', () => {
+        changeUsernameInput.value = myUsername;
+        changeColorPicker.value = myColor;
+        changeIdentityModal.style.display = 'flex';
+    });
+
+    cancelChangeBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        changeIdentityModal.style.display = 'none';
+    });
+
+    changeIdentityForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newUsername = changeUsernameInput.value.trim();
+        const newColor = changeColorPicker.value;
+
+        if (newUsername) {
+            myUsername = newUsername;
+            myColor = newColor;
+            saveSession();
+            socket.emit('join_domain', { user: myUsername, color: myColor });
+            changeIdentityModal.style.display = 'none';
+            messageInput.focus();
         }
     });
 
