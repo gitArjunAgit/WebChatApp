@@ -487,7 +487,7 @@ def handle_join_flappy(data):
         'score': 0
     }
     # Send existing birds (excluding self) to the joining player
-    other_birds = [bird for sid, bird in flappy_birds.items() if sid != request.sid]
+    other_birds = [bird_data for sid, bird_data in flappy_birds.items() if sid != request.sid]
     emit('flappy_birds_state', other_birds)
     # Notify others in the room of the new bird
     emit('flappy_bird_joined', flappy_birds[request.sid], room=FLAPPY_ROOM, include_self=False)

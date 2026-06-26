@@ -1388,6 +1388,7 @@
     const FB_GRAVITY = 0.45, FB_FLAP = -9;
     const FB_PIPE_W = 55, FB_PIPE_GAP = 165, FB_PIPE_SPEED = 3;
     const FB_UPDATE_INTERVAL_MS = 50; // network update throttle (ms)
+    const FB_COLLISION_TOLERANCE = 3; // pixels to reduce collision radius for fair gameplay
     const FB_STAR_POSITIONS = [[20,30],[80,100],[150,50],[300,80],[420,160],[60,400],[200,300],[380,450],[100,550],[450,520],[240,200],[350,350],[30,480],[470,70],[110,260]];
 
     let fbActive = false;
@@ -1457,7 +1458,7 @@
                 fbSaveHighScore();
             }
             // Collision radius is slightly smaller than visual radius for fair gameplay
-            const bx = FB_BIRD_X, by = fbBirdY, br = FB_BIRD_R - 3;
+            const bx = FB_BIRD_X, by = fbBirdY, br = FB_BIRD_R - FB_COLLISION_TOLERANCE;
             const px = fbPipes[i].x, topH = fbPipes[i].topH;
             if (bx + br > px && bx - br < px + FB_PIPE_W) {
                 if (by - br < topH || by + br > topH + FB_PIPE_GAP) {
@@ -1620,6 +1621,7 @@
     exitFlappyBtn.addEventListener('click', () => {
         fbActive = false;
         if (fbAnimFrame) { cancelAnimationFrame(fbAnimFrame); fbAnimFrame = null; }
+        fbSaveHighScore();
         socket.emit('leave_flappy');
         fbOtherBirds = {};
         flappyArena.style.display = 'none';
@@ -1637,7 +1639,7 @@
     flappyCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); fbFlap(); }, {passive: false});
 
     function fbHandleOtherBird(data) {
-        if (data.user !== myUsername) fbOtherBirds[data.sid] = data;
+        if (data.sid !== socket.id) fbOtherBirds[data.sid] = data;
     }
 
     socket.on('flappy_birds_state', (birds) => {
