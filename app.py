@@ -414,15 +414,17 @@ def handle_leave_private(data):
         return
 
     user = get_user_by_sid(request.sid)
-
-
     private_rooms[room_id]['members'].discard(request.sid)
     leave_room(room_id)
 
     socketio.emit('private_left', {
         'room_id': room_id,
-        'user': get_user_by_sid(request.sid)
+        'user': user
     }, room=room_id)
+    socketio.emit('private_left', {
+        'room_id': room_id,
+        'user': user
+    }, room=request.sid)
 
     if not private_rooms[room_id]['members']:
         del private_rooms[room_id]

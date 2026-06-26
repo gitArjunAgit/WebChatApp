@@ -1277,6 +1277,10 @@
     leavePrivateBtn.addEventListener('click', () => {
         if (currentPrivateRoomId) {
             socket.emit('leave_private', { room_id: currentPrivateRoomId });
+            currentPrivateRoomId = null;
+            currentPrivateMembers = [];
+            privateRoomShell.style.display = 'none';
+            privateChatBox.innerHTML = '';
         }
     });
 
