@@ -41,6 +41,10 @@ active_games = {}  # game_id -> game_state
 private_queue = []
 private_rooms = {}
 
+# Flappy Bird: shared bird presence
+flappy_birds = {}  # sid -> {sid, user, color, y, vy, alive, score}
+FLAPPY_ROOM = 'flappy-room'
+
 
 class PongGame:
     def __init__(self, player1_sid, player1_name, player1_color, player2_sid, player2_name, player2_color):
@@ -268,6 +272,11 @@ def handle_disconnect():
             if not room['members']:
                 del private_rooms[room_id]
 
+    # Remove from flappy birds
+    if request.sid in flappy_birds:
+        del flappy_birds[request.sid]
+        socketio.emit('flappy_bird_left', {'sid': request.sid}, room=FLAPPY_ROOM)
+
 
 @socketio.on('send_message')
 def handle_send_message(data):
@@ -463,6 +472,46 @@ def handle_request_game_state(data):
     if game_id in active_games:
         game = active_games[game_id]
         emit('game_state_update', game.get_state(), room=game_id)
+
+
+@socketio.on('join_flappy')
+def handle_join_flappy(data):
+    join_room(FLAPPY_ROOM)
+    flappy_birds[request.sid] = {
+        'sid': request.sid,
+        'user': data.get('user'),
+        'color': data.get('color'),
+        'y': 320,
+        'vy': 0,
+        'alive': True,
+        'score': 0
+    }
+    # Send existing birds (excluding self) to the joining player
+    other_birds = [b for sid, b in flappy_birds.items() if sid != request.sid]
+    emit('flappy_birds_state', other_birds)
+    # Notify others in the room of the new bird
+    emit('flappy_bird_joined', flappy_birds[request.sid], room=FLAPPY_ROOM, include_self=False)
+
+
+@socketio.on('flappy_bird_update')
+def handle_flappy_bird_update(data):
+    sid = request.sid
+    if sid in flappy_birds:
+        flappy_birds[sid].update({
+            'y': data.get('y', flappy_birds[sid]['y']),
+            'vy': data.get('vy', 0),
+            'alive': data.get('alive', True),
+            'score': data.get('score', 0)
+        })
+        emit('flappy_bird_update', flappy_birds[sid], room=FLAPPY_ROOM, include_self=False)
+
+
+@socketio.on('leave_flappy')
+def handle_leave_flappy():
+    if request.sid in flappy_birds:
+        del flappy_birds[request.sid]
+    socketio.emit('flappy_bird_left', {'sid': request.sid}, room=FLAPPY_ROOM)
+    leave_room(FLAPPY_ROOM)
 
 
 def game_loop():
