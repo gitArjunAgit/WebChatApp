@@ -430,7 +430,7 @@
         }
 
         /* Additions */
-        #join-pong-btn, #join-private-btn, #leave-private-btn {
+        #join-pong-btn, #join-flappy-btn, #join-private-btn, #leave-private-btn {
             width: 100%;
             padding: 12px;
             margin-bottom: 12px;
@@ -790,7 +790,7 @@
         <button type="button" id="join-pong-btn" style="width: 100%; padding: 12px; margin-bottom: 20px; background: #a855f7; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase;">
             Join Cosmic Pong
         </button>
-        <button type="button" id="join-flappy-btn" style="width: 100%; padding: 12px; margin-bottom: 20px; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase;">
+        <button type="button" id="join-flappy-btn">
             🐦 Flappy Bird
         </button>
         <button type="button" id="join-private-btn">Join Private Room</button>
@@ -1387,6 +1387,8 @@
     const FB_BIRD_X = 100, FB_BIRD_R = 18;
     const FB_GRAVITY = 0.45, FB_FLAP = -9;
     const FB_PIPE_W = 55, FB_PIPE_GAP = 165, FB_PIPE_SPEED = 3;
+    const FB_UPDATE_INTERVAL_MS = 50; // network update throttle (ms)
+    const FB_STAR_POSITIONS = [[20,30],[80,100],[150,50],[300,80],[420,160],[60,400],[200,300],[380,450],[100,550],[450,520],[240,200],[350,350],[30,480],[470,70],[110,260]];
 
     let fbActive = false;
     let fbGameStarted = false;
@@ -1400,6 +1402,13 @@
     let fbAnimFrame = null;
     let fbLastUpdate = 0;
     let fbHoverOffset = 0, fbHoverDir = 1;
+
+    function fbSaveHighScore() {
+        if (fbScore > fbHighScore) {
+            fbHighScore = fbScore;
+            localStorage.setItem('flappyHighScore', fbHighScore);
+        }
+    }
 
     function fbReset() {
         fbBirdY = FB_H / 2;
@@ -1432,7 +1441,7 @@
 
         if (fbBirdY + FB_BIRD_R >= FB_H || fbBirdY - FB_BIRD_R <= 0) {
             fbBirdAlive = false;
-            if (fbScore > fbHighScore) { fbHighScore = fbScore; localStorage.setItem('flappyHighScore', fbHighScore); }
+            fbSaveHighScore();
         }
 
         if (fbFrame % 90 === 0) {
@@ -1445,14 +1454,15 @@
             if (!fbPipes[i].scored && fbPipes[i].x + FB_PIPE_W < FB_BIRD_X) {
                 fbPipes[i].scored = true;
                 fbScore++;
-                if (fbScore > fbHighScore) { fbHighScore = fbScore; localStorage.setItem('flappyHighScore', fbHighScore); }
+                fbSaveHighScore();
             }
+            // Collision radius is slightly smaller than visual radius for fair gameplay
             const bx = FB_BIRD_X, by = fbBirdY, br = FB_BIRD_R - 3;
             const px = fbPipes[i].x, topH = fbPipes[i].topH;
             if (bx + br > px && bx - br < px + FB_PIPE_W) {
                 if (by - br < topH || by + br > topH + FB_PIPE_GAP) {
                     fbBirdAlive = false;
-                    if (fbScore > fbHighScore) { fbHighScore = fbScore; localStorage.setItem('flappyHighScore', fbHighScore); }
+                    fbSaveHighScore();
                 }
             }
             if (fbPipes[i].x + FB_PIPE_W < 0) fbPipes.splice(i, 1);
@@ -1496,9 +1506,8 @@
         fCtx.fillStyle = '#020010';
         fCtx.fillRect(0, 0, FB_W, FB_H);
 
-        const stars = [[20,30],[80,100],[150,50],[300,80],[420,160],[60,400],[200,300],[380,450],[100,550],[450,520],[240,200],[350,350],[30,480],[470,70],[110,260]];
         fCtx.fillStyle = 'rgba(255,255,255,0.7)';
-        for (const [sx, sy] of stars) {
+        for (const [sx, sy] of FB_STAR_POSITIONS) {
             fCtx.beginPath();
             fCtx.arc(sx, sy, 1.2, 0, Math.PI * 2);
             fCtx.fill();
@@ -1589,7 +1598,7 @@
         fbUpdate();
         fbDraw();
         const now = Date.now();
-        if (now - fbLastUpdate > 50) {
+        if (now - fbLastUpdate > FB_UPDATE_INTERVAL_MS) {
             socket.emit('flappy_bird_update', {y: fbBirdY, vy: fbBirdVY, alive: fbBirdAlive, score: fbScore});
             fbLastUpdate = now;
         }
@@ -1627,18 +1636,17 @@
     flappyCanvas.addEventListener('click', fbFlap);
     flappyCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); fbFlap(); }, {passive: false});
 
+    function fbHandleOtherBird(data) {
+        if (data.user !== myUsername) fbOtherBirds[data.sid] = data;
+    }
+
     socket.on('flappy_birds_state', (birds) => {
         fbOtherBirds = {};
-        for (const b of birds) { fbOtherBirds[b.sid] = b; }
+        for (const bird of birds) { fbOtherBirds[bird.sid] = bird; }
     });
 
-    socket.on('flappy_bird_joined', (data) => {
-        if (data.user !== myUsername) fbOtherBirds[data.sid] = data;
-    });
-
-    socket.on('flappy_bird_update', (data) => {
-        if (data.user !== myUsername) fbOtherBirds[data.sid] = data;
-    });
+    socket.on('flappy_bird_joined', fbHandleOtherBird);
+    socket.on('flappy_bird_update', fbHandleOtherBird);
 
     socket.on('flappy_bird_left', (data) => {
         delete fbOtherBirds[data.sid];
