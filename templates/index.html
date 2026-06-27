@@ -430,7 +430,7 @@
         }
 
         /* Additions */
-        #join-pong-btn, #join-private-btn, #leave-private-btn {
+        #join-pong-btn, #join-flappy-btn, #join-private-btn, #leave-private-btn {
             width: 100%;
             padding: 12px;
             margin-bottom: 12px;
@@ -628,6 +628,57 @@
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-10px); }
         }
+
+        /* ===== Flappy Bird ===== */
+        #join-flappy-btn {
+            background: #1BFF9B;
+            color: #02111f;
+        }
+
+        #flappy-arena {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #020010;
+            z-index: 9999;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: auto;
+            gap: 16px;
+        }
+
+        #flappy-arena h1 {
+            color: #f6d365;
+            text-align: center;
+            font-size: 1.8em;
+            margin: 0;
+        }
+
+        #flappy-canvas {
+            background: #020010;
+            border: 3px solid #a855f7;
+            box-shadow: 0 0 30px rgba(168, 85, 247, 0.5);
+            display: block;
+            max-width: 95vw;
+            max-height: 75vh;
+        }
+
+        #exit-flappy-btn {
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        #exit-flappy-btn:hover {
+            transform: scale(1.05);
+        }
     </style>
 </head>
 <body>
@@ -739,6 +790,9 @@
         <button type="button" id="join-pong-btn" style="width: 100%; padding: 12px; margin-bottom: 20px; background: #a855f7; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase;">
             Join Cosmic Pong
         </button>
+        <button type="button" id="join-flappy-btn">
+            🐦 Flappy Bird
+        </button>
         <button type="button" id="join-private-btn">Join Private Room</button>
         <button type="button" id="change-identity-btn">Change Identity</button>
         <div class="side-box" style="flex: 1;">
@@ -771,6 +825,12 @@
         </div>
         <button id="exit-pong-btn">Exit Arena</button>
     </div>
+</div>
+
+<div id="flappy-arena">
+    <h1>🚀 Cosmic Flappy Bird 🚀</h1>
+    <canvas id="flappy-canvas" width="480" height="640"></canvas>
+    <button id="exit-flappy-btn">Exit Game</button>
 </div>
 
 <script>
@@ -1315,6 +1375,285 @@
     setInterval(() => {
         socket.emit('ping');
     }, 300000);
+
+    // ========== FLAPPY BIRD ==========
+    const flappyArena = document.getElementById('flappy-arena');
+    const flappyCanvas = document.getElementById('flappy-canvas');
+    const fCtx = flappyCanvas.getContext('2d');
+    const joinFlappyBtn = document.getElementById('join-flappy-btn');
+    const exitFlappyBtn = document.getElementById('exit-flappy-btn');
+
+    const FB_W = 480, FB_H = 640;
+    const FB_BIRD_X = 100, FB_BIRD_R = 18;
+    const FB_GRAVITY = 0.45, FB_FLAP = -9;
+    const FB_PIPE_W = 55, FB_PIPE_GAP = 165, FB_PIPE_SPEED = 3;
+    const FB_UPDATE_INTERVAL_MS = 50; // network update throttle (ms)
+    const FB_COLLISION_TOLERANCE = 3; // pixels to reduce collision radius for fair gameplay
+    const FB_STAR_POSITIONS = [[20,30],[80,100],[150,50],[300,80],[420,160],[60,400],[200,300],[380,450],[100,550],[450,520],[240,200],[350,350],[30,480],[470,70],[110,260]];
+
+    let fbActive = false;
+    let fbGameStarted = false;
+    let fbBirdY = FB_H / 2, fbBirdVY = 0;
+    let fbBirdAlive = true;
+    let fbScore = 0;
+    let fbHighScore = parseInt(localStorage.getItem('flappyHighScore') || '0');
+    let fbPipes = [];
+    let fbFrame = 0;
+    let fbOtherBirds = {};
+    let fbAnimFrame = null;
+    let fbLastUpdate = 0;
+    let fbHoverOffset = 0, fbHoverDir = 1;
+
+    function fbSaveHighScore() {
+        if (fbScore > fbHighScore) {
+            fbHighScore = fbScore;
+            localStorage.setItem('flappyHighScore', fbHighScore);
+        }
+    }
+
+    function fbReset() {
+        fbBirdY = FB_H / 2;
+        fbBirdVY = 0;
+        fbBirdAlive = true;
+        fbScore = 0;
+        fbPipes = [];
+        fbFrame = 0;
+        fbGameStarted = false;
+        fbHoverOffset = 0;
+    }
+
+    function fbFlap() {
+        if (!fbActive) return;
+        if (!fbBirdAlive) { fbReset(); return; }
+        fbGameStarted = true;
+        fbBirdVY = FB_FLAP;
+    }
+
+    function fbUpdate() {
+        if (!fbGameStarted) {
+            fbHoverOffset += 0.05 * fbHoverDir;
+            if (Math.abs(fbHoverOffset) > 8) fbHoverDir *= -1;
+            return;
+        }
+        if (!fbBirdAlive) return;
+
+        fbBirdVY += FB_GRAVITY;
+        fbBirdY += fbBirdVY;
+
+        if (fbBirdY + FB_BIRD_R >= FB_H || fbBirdY - FB_BIRD_R <= 0) {
+            fbBirdAlive = false;
+            fbSaveHighScore();
+        }
+
+        if (fbFrame % 90 === 0) {
+            const topH = Math.random() * (FB_H - FB_PIPE_GAP - 100) + 50;
+            fbPipes.push({x: FB_W, topH, scored: false});
+        }
+
+        for (let i = fbPipes.length - 1; i >= 0; i--) {
+            fbPipes[i].x -= FB_PIPE_SPEED;
+            if (!fbPipes[i].scored && fbPipes[i].x + FB_PIPE_W < FB_BIRD_X) {
+                fbPipes[i].scored = true;
+                fbScore++;
+                fbSaveHighScore();
+            }
+            // Collision radius is slightly smaller than visual radius for fair gameplay
+            const bx = FB_BIRD_X, by = fbBirdY, br = FB_BIRD_R - FB_COLLISION_TOLERANCE;
+            const px = fbPipes[i].x, topH = fbPipes[i].topH;
+            if (bx + br > px && bx - br < px + FB_PIPE_W) {
+                if (by - br < topH || by + br > topH + FB_PIPE_GAP) {
+                    fbBirdAlive = false;
+                    fbSaveHighScore();
+                }
+            }
+            if (fbPipes[i].x + FB_PIPE_W < 0) fbPipes.splice(i, 1);
+        }
+        fbFrame++;
+    }
+
+    function fbDrawBird(x, y, color, alpha) {
+        fCtx.save();
+        fCtx.globalAlpha = alpha;
+        fCtx.beginPath();
+        fCtx.arc(x, y, FB_BIRD_R, 0, Math.PI * 2);
+        const g = fCtx.createRadialGradient(x - 4, y - 4, 2, x, y, FB_BIRD_R);
+        g.addColorStop(0, '#fff');
+        g.addColorStop(0.4, color);
+        g.addColorStop(1, '#000033');
+        fCtx.fillStyle = g;
+        fCtx.shadowColor = color;
+        fCtx.shadowBlur = 12;
+        fCtx.fill();
+        fCtx.shadowBlur = 0;
+        fCtx.beginPath();
+        fCtx.arc(x + 7, y - 5, 4, 0, Math.PI * 2);
+        fCtx.fillStyle = '#fff';
+        fCtx.fill();
+        fCtx.beginPath();
+        fCtx.arc(x + 8, y - 5, 2, 0, Math.PI * 2);
+        fCtx.fillStyle = '#000';
+        fCtx.fill();
+        fCtx.beginPath();
+        fCtx.moveTo(x + FB_BIRD_R - 2, y);
+        fCtx.lineTo(x + FB_BIRD_R + 8, y - 2);
+        fCtx.lineTo(x + FB_BIRD_R + 8, y + 4);
+        fCtx.closePath();
+        fCtx.fillStyle = '#fb923c';
+        fCtx.fill();
+        fCtx.restore();
+    }
+
+    function fbDraw() {
+        fCtx.fillStyle = '#020010';
+        fCtx.fillRect(0, 0, FB_W, FB_H);
+
+        fCtx.fillStyle = 'rgba(255,255,255,0.7)';
+        for (const [sx, sy] of FB_STAR_POSITIONS) {
+            fCtx.beginPath();
+            fCtx.arc(sx, sy, 1.2, 0, Math.PI * 2);
+            fCtx.fill();
+        }
+
+        fCtx.shadowBlur = 10;
+        for (const pipe of fbPipes) {
+            const grad = fCtx.createLinearGradient(pipe.x, 0, pipe.x + FB_PIPE_W, 0);
+            grad.addColorStop(0, '#7c3aed');
+            grad.addColorStop(0.5, '#a855f7');
+            grad.addColorStop(1, '#4c1d95');
+            fCtx.fillStyle = grad;
+            fCtx.shadowColor = 'rgba(168,85,247,0.6)';
+            fCtx.fillRect(pipe.x, 0, FB_PIPE_W, pipe.topH);
+            fCtx.fillRect(pipe.x, pipe.topH + FB_PIPE_GAP, FB_PIPE_W, FB_H);
+            fCtx.shadowColor = 'rgba(168,85,247,0.9)';
+            fCtx.fillRect(pipe.x - 5, pipe.topH - 24, FB_PIPE_W + 10, 24);
+            fCtx.fillRect(pipe.x - 5, pipe.topH + FB_PIPE_GAP, FB_PIPE_W + 10, 24);
+        }
+        fCtx.shadowBlur = 0;
+
+        for (const sid in fbOtherBirds) {
+            const ob = fbOtherBirds[sid];
+            if (!ob.alive) continue;
+            fbDrawBird(FB_BIRD_X, ob.y, ob.color || '#1BFF9B', 0.55);
+            fCtx.save();
+            fCtx.globalAlpha = 0.65;
+            fCtx.fillStyle = ob.color || '#1BFF9B';
+            fCtx.font = 'bold 11px sans-serif';
+            fCtx.textAlign = 'center';
+            fCtx.fillText(ob.user || '?', FB_BIRD_X, ob.y - FB_BIRD_R - 6);
+            fCtx.restore();
+        }
+
+        const displayY = fbGameStarted ? fbBirdY : fbBirdY + fbHoverOffset;
+        if (fbBirdAlive) {
+            fbDrawBird(FB_BIRD_X, displayY, myColor || '#FFD700', 1.0);
+            fCtx.fillStyle = myColor || '#FFD700';
+            fCtx.font = 'bold 11px sans-serif';
+            fCtx.textAlign = 'center';
+            fCtx.fillText(myUsername || 'You', FB_BIRD_X, displayY - FB_BIRD_R - 6);
+        } else {
+            fbDrawBird(FB_BIRD_X, fbBirdY, myColor || '#FFD700', 0.3);
+        }
+
+        fCtx.textAlign = 'center';
+        fCtx.font = 'bold 40px sans-serif';
+        fCtx.fillStyle = '#FFD700';
+        fCtx.shadowColor = 'rgba(255,215,0,0.6)';
+        fCtx.shadowBlur = 12;
+        fCtx.fillText(fbScore, FB_W / 2, 55);
+        fCtx.shadowBlur = 0;
+        fCtx.font = '14px sans-serif';
+        fCtx.fillStyle = '#94a3b8';
+        fCtx.fillText('Best: ' + fbHighScore, FB_W / 2, 78);
+
+        if (!fbGameStarted && fbBirdAlive) {
+            fCtx.fillStyle = 'rgba(255,255,255,0.8)';
+            fCtx.font = 'bold 18px sans-serif';
+            fCtx.textAlign = 'center';
+            fCtx.fillText('Tap or press Space to fly!', FB_W / 2, FB_H - 80);
+        }
+
+        if (!fbBirdAlive) {
+            fCtx.fillStyle = 'rgba(2,0,16,0.78)';
+            fCtx.fillRect(0, 0, FB_W, FB_H);
+            fCtx.textAlign = 'center';
+            fCtx.font = 'bold 40px sans-serif';
+            fCtx.fillStyle = '#ef4444';
+            fCtx.shadowColor = 'rgba(239,68,68,0.9)';
+            fCtx.shadowBlur = 20;
+            fCtx.fillText('💥 GAME OVER', FB_W / 2, FB_H / 2 - 60);
+            fCtx.shadowBlur = 0;
+            fCtx.font = 'bold 32px sans-serif';
+            fCtx.fillStyle = '#FFD700';
+            fCtx.fillText('Score: ' + fbScore, FB_W / 2, FB_H / 2 - 10);
+            fCtx.font = 'bold 24px sans-serif';
+            fCtx.fillStyle = '#1BFF9B';
+            fCtx.fillText('Best: ' + fbHighScore, FB_W / 2, FB_H / 2 + 35);
+            fCtx.font = '18px sans-serif';
+            fCtx.fillStyle = '#94a3b8';
+            fCtx.fillText('Tap / Space to retry', FB_W / 2, FB_H / 2 + 85);
+        }
+    }
+
+    function fbGameLoop() {
+        if (!fbActive) return;
+        fbUpdate();
+        fbDraw();
+        const now = Date.now();
+        if (now - fbLastUpdate > FB_UPDATE_INTERVAL_MS) {
+            socket.emit('flappy_bird_update', {y: fbBirdY, vy: fbBirdVY, alive: fbBirdAlive, score: fbScore});
+            fbLastUpdate = now;
+        }
+        fbAnimFrame = requestAnimationFrame(fbGameLoop);
+    }
+
+    joinFlappyBtn.addEventListener('click', () => {
+        if (!myUsername) return;
+        mainLayout.style.display = 'none';
+        flappyArena.style.display = 'flex';
+        fbActive = true;
+        fbOtherBirds = {};
+        fbHighScore = parseInt(localStorage.getItem('flappyHighScore') || '0');
+        fbReset();
+        socket.emit('join_flappy', {user: myUsername, color: myColor});
+        fbAnimFrame = requestAnimationFrame(fbGameLoop);
+    });
+
+    exitFlappyBtn.addEventListener('click', () => {
+        fbActive = false;
+        if (fbAnimFrame) { cancelAnimationFrame(fbAnimFrame); fbAnimFrame = null; }
+        fbSaveHighScore();
+        socket.emit('leave_flappy');
+        fbOtherBirds = {};
+        flappyArena.style.display = 'none';
+        mainLayout.style.display = 'flex';
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (fbActive && (e.code === 'Space' || e.key === ' ')) {
+            e.preventDefault();
+            fbFlap();
+        }
+    });
+
+    flappyCanvas.addEventListener('click', fbFlap);
+    flappyCanvas.addEventListener('touchstart', (e) => { e.preventDefault(); fbFlap(); }, {passive: false});
+
+    function fbHandleOtherBird(data) {
+        if (data.sid !== socket.id) fbOtherBirds[data.sid] = data;
+    }
+
+    socket.on('flappy_birds_state', (birds) => {
+        fbOtherBirds = {};
+        for (const bird of birds) { fbOtherBirds[bird.sid] = bird; }
+    });
+
+    socket.on('flappy_bird_joined', fbHandleOtherBird);
+    socket.on('flappy_bird_update', fbHandleOtherBird);
+
+    socket.on('flappy_bird_left', (data) => {
+        delete fbOtherBirds[data.sid];
+    });
+    // ========== END FLAPPY BIRD ==========
 </script>
 </body>
 </html>
