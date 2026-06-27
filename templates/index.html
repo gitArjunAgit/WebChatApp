@@ -262,8 +262,22 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 20px;
+            gap: 10px;
             max-height: 600px;
+        }
+
+        .action-btn-cluster {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .action-btn-cluster button {
+            width: 100%;
+            padding: 7px 5px;
+            margin: 0;
+            font-size: 0.72em;
+            border-radius: 10px;
         }
 
         .side-box {
@@ -787,14 +801,12 @@
     </div>
 
     <div id="sidebar-panel">
-        <button type="button" id="join-pong-btn" style="width: 100%; padding: 12px; margin-bottom: 20px; background: #a855f7; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase;">
-            Join Cosmic Pong
-        </button>
-        <button type="button" id="join-flappy-btn">
-            🐦 Flappy Bird
-        </button>
-        <button type="button" id="join-private-btn">Join Private Room</button>
-        <button type="button" id="change-identity-btn">Change Identity</button>
+        <div class="action-btn-cluster">
+            <button type="button" id="join-pong-btn">Join Cosmic Pong</button>
+            <button type="button" id="join-flappy-btn">🐦 Flappy Bird</button>
+            <button type="button" id="join-private-btn">Join Private Room</button>
+            <button type="button" id="change-identity-btn">Change Identity</button>
+        </div>
         <div class="side-box" style="flex: 1;">
             <h3>Active Spirits</h3>
             <div id="users-list"></div>
