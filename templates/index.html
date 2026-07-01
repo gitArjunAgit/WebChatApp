@@ -1190,7 +1190,7 @@
                 </div>
             </div>
             <div id="mention-picker" aria-label="Mention user picker">
-                <div class="sticker-picker-header">✦ Mention Online Spirit ✦</div>
+                <div class="sticker-picker-header">✦ Mention Online Spirits ✦</div>
                 <div id="mention-list"></div>
             </div>
             <input type="text" id="message-input" placeholder="Transmit your message to the cosmos..." required autocomplete="off">
@@ -1335,6 +1335,8 @@
     let pendingMentionUser = null;
     let lastTouchedUser = null;
     let lastTouchTime = 0;
+    const DOUBLE_TAP_THRESHOLD_MS = 350;
+    const MIN_MENU_OFFSET = 8;
 
     // Load saved session from localStorage
     function loadSession() {
@@ -1539,8 +1541,9 @@
     function showUserMentionMenu(username, x, y) {
         pendingMentionUser = username;
         userMentionAction.textContent = `Mention @${username}`;
-        userMentionMenu.style.left = `${Math.max(8, x)}px`;
-        userMentionMenu.style.top = `${Math.max(8, y)}px`;
+        userMentionAction.setAttribute('aria-label', `Mention @${username}`);
+        userMentionMenu.style.left = `${Math.max(MIN_MENU_OFFSET, x)}px`;
+        userMentionMenu.style.top = `${Math.max(MIN_MENU_OFFSET, y)}px`;
         userMentionMenu.style.display = 'block';
     }
 
@@ -1627,13 +1630,13 @@
 
             div.addEventListener('dblclick', (event) => {
                 const rect = div.getBoundingClientRect();
-                showMenuForUser(event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + 8);
+                showMenuForUser(event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + MIN_MENU_OFFSET);
             });
 
             div.addEventListener('touchend', (event) => {
                 if (!u.user || u.user === myUsername) return;
                 const now = Date.now();
-                const isDoubleTap = lastTouchedUser === u.user && (now - lastTouchTime) < 350;
+                const isDoubleTap = lastTouchedUser === u.user && (now - lastTouchTime) < DOUBLE_TAP_THRESHOLD_MS;
                 lastTouchedUser = u.user;
                 lastTouchTime = now;
                 if (isDoubleTap) {
@@ -1642,11 +1645,10 @@
                     showUserMentionMenu(
                         u.user,
                         touch ? touch.clientX : rect.left + rect.width / 2,
-                        touch ? touch.clientY : rect.top + 8
+                        touch ? touch.clientY : rect.top + MIN_MENU_OFFSET
                     );
-                    event.preventDefault();
                 }
-            }, { passive: false });
+            });
 
             usersList.appendChild(div);
         });

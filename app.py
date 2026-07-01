@@ -205,7 +205,7 @@ def notify_mentions(data):
 
 def extract_mentions(msg, sender):
     mentioned = set()
-    for token in str(msg).split():
+    for token in (msg or '').split():
         if token.startswith('@') and len(token) > 1:
             candidate = token[1:].strip('.,!?:;()[]{}<>"\'')
             if candidate and candidate != sender:
