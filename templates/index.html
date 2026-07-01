@@ -369,7 +369,7 @@
             max-width: min(82%, 560px);
             width: fit-content;
             word-break: break-word;
-            overflow-wrap: anywhere;
+            overflow-wrap: break-word;
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
@@ -377,8 +377,8 @@
             margin-left: auto;
             margin-right: 0;
             border-bottom-right-radius: 8px;
-            background: linear-gradient(135deg, rgba(0, 122, 255, 0.88), rgba(76, 70, 215, 0.86));
-            box-shadow: 0 8px 18px rgba(0, 212, 255, 0.18);
+            background: linear-gradient(135deg, rgba(0, 114, 245, 0.94), rgba(38, 74, 215, 0.9));
+            box-shadow: 0 8px 18px rgba(0, 122, 255, 0.18);
         }
 
         .received-bubble {
@@ -1008,9 +1008,13 @@
         localStorage.removeItem('userSession');
     }
 
+    function isCurrentUserMessage(data) {
+        return !!myUsername && data.user === myUsername;
+    }
+
     function appendMessage(data) {
         const msgLine = document.createElement('div');
-        const isOwnMessage = !!myUsername && data.user === myUsername;
+        const isOwnMessage = isCurrentUserMessage(data);
         msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
@@ -1049,7 +1053,7 @@
 
     function appendPrivateMessage(data) {
         const msgLine = document.createElement('div');
-        const isOwnMessage = !!myUsername && data.user === myUsername;
+        const isOwnMessage = isCurrentUserMessage(data);
         msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
@@ -1146,7 +1150,7 @@
 
     function appendMessage(data) {
         const msgLine = document.createElement('div');
-        const isOwnMessage = !!myUsername && data.user === myUsername;
+        const isOwnMessage = isCurrentUserMessage(data);
         msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
