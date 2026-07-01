@@ -377,7 +377,7 @@
             margin-left: auto;
             margin-right: 0;
             border-bottom-right-radius: 8px;
-            background: linear-gradient(135deg, rgba(0, 212, 255, 0.75), rgba(106, 90, 255, 0.72));
+            background: linear-gradient(135deg, rgba(0, 122, 255, 0.88), rgba(76, 70, 215, 0.86));
             box-shadow: 0 8px 18px rgba(0, 212, 255, 0.18);
         }
 
@@ -413,13 +413,13 @@
             letter-spacing: 0.5px;
         }
 
-        .sent-bubble .timestamp,
-        .sent-bubble .username {
-            color: rgba(255, 255, 255, 0.88) !important;
+        .message-line.sent-bubble .timestamp,
+        .message-line.sent-bubble .username {
+            color: rgba(255, 255, 255, 0.88);
         }
 
-        .sent-bubble a {
-            color: #e2f7ff !important;
+        .message-line.sent-bubble a {
+            color: #e2f7ff;
         }
 
         @media (max-width: 900px) {
@@ -1010,7 +1010,7 @@
 
     function appendMessage(data) {
         const msgLine = document.createElement('div');
-        const isOwnMessage = data.user === myUsername;
+        const isOwnMessage = !!myUsername && data.user === myUsername;
         msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
@@ -1049,7 +1049,7 @@
 
     function appendPrivateMessage(data) {
         const msgLine = document.createElement('div');
-        const isOwnMessage = data.user === myUsername;
+        const isOwnMessage = !!myUsername && data.user === myUsername;
         msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
@@ -1146,7 +1146,7 @@
 
     function appendMessage(data) {
         const msgLine = document.createElement('div');
-        const isOwnMessage = data.user === myUsername;
+        const isOwnMessage = !!myUsername && data.user === myUsername;
         msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
