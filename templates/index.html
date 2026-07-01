@@ -608,6 +608,19 @@
             box-shadow: 0 6px 24px rgba(168, 85, 247, 0.4);
         }
 
+        #mention-btn {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.8) 0%, rgba(56, 189, 248, 0.75) 100%);
+            color: #fff;
+            font-size: 1.05em;
+            padding: 13px 16px;
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.2);
+            flex-shrink: 0;
+        }
+
+        #mention-btn:hover {
+            box-shadow: 0 6px 24px rgba(0, 212, 255, 0.4);
+        }
+
         #sticker-picker {
             display: none;
             position: absolute;
@@ -625,6 +638,76 @@
 
         #sticker-picker.open {
             display: block;
+        }
+
+        #mention-picker {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 12px);
+            right: 68px;
+            width: 232px;
+            max-height: 220px;
+            overflow-y: auto;
+            background: rgba(10, 6, 40, 0.96);
+            border: 1px solid rgba(0, 212, 255, 0.35);
+            border-radius: 16px;
+            padding: 10px;
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.2), 0 2px 8px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(18px);
+            z-index: 500;
+        }
+
+        #mention-picker.open {
+            display: block;
+        }
+
+        .mention-user-btn {
+            width: 100%;
+            margin: 4px 0;
+            padding: 9px 10px;
+            text-align: left;
+            border-radius: 10px;
+            text-transform: none;
+            letter-spacing: 0.3px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #dbeafe;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        .mention-user-btn:hover {
+            background: rgba(56, 189, 248, 0.18);
+            box-shadow: 0 2px 10px rgba(56, 189, 248, 0.25);
+        }
+
+        .mention-empty {
+            color: rgba(219, 234, 254, 0.7);
+            text-align: center;
+            font-size: 0.74em;
+            letter-spacing: 0.5px;
+            padding: 10px 0;
+        }
+
+        #user-mention-menu {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            background: rgba(12, 8, 34, 0.96);
+            border: 1px solid rgba(0, 212, 255, 0.35);
+            border-radius: 12px;
+            padding: 8px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(12px);
+        }
+
+        #user-mention-action {
+            padding: 8px 12px;
+            border-radius: 10px;
+            text-transform: none;
+            letter-spacing: 0.4px;
+            font-size: 0.78em;
+            background: rgba(56, 189, 248, 0.2);
+            color: #dbeafe;
         }
 
         .sticker-picker-header {
@@ -1106,8 +1189,13 @@
                     <button type="button" class="sticker-item" data-sticker="🎇🪐" title="Galaxy Bloom">🎇🪐</button>
                 </div>
             </div>
+            <div id="mention-picker" aria-label="Mention user picker">
+                <div class="sticker-picker-header">✦ Mention Online Spirit ✦</div>
+                <div id="mention-list"></div>
+            </div>
             <input type="text" id="message-input" placeholder="Transmit your message to the cosmos..." required autocomplete="off">
             <button type="submit" id="send-btn">Send</button>
+            <button type="button" id="mention-btn" title="Mention an online spirit">@</button>
             <button type="button" id="sticker-btn" title="Cosmic Stickers">🌌</button>
         </form>
 
@@ -1140,6 +1228,9 @@
             <div id="typing-list"></div>
         </div>
     </div>
+</div>
+<div id="user-mention-menu">
+    <button type="button" id="user-mention-action">Mention</button>
 </div>
 
 <div id="pong-arena">
@@ -1196,8 +1287,13 @@
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
     const wipeBtn = document.getElementById('wipe-btn');
+    const mentionBtn = document.getElementById('mention-btn');
+    const mentionPicker = document.getElementById('mention-picker');
+    const mentionList = document.getElementById('mention-list');
     const stickerBtn = document.getElementById('sticker-btn');
     const stickerPicker = document.getElementById('sticker-picker');
+    const userMentionMenu = document.getElementById('user-mention-menu');
+    const userMentionAction = document.getElementById('user-mention-action');
     const statusBar = document.getElementById('status-bar');
     const typingList = document.getElementById('typing-list');
     const usersList = document.getElementById('users-list');
@@ -1235,6 +1331,10 @@
     let lastWinner = null;
     let currentPrivateRoomId = null;
     let currentPrivateMembers = [];
+    let onlineUsers = [];
+    let pendingMentionUser = null;
+    let lastTouchedUser = null;
+    let lastTouchTime = 0;
 
     // Load saved session from localStorage
     function loadSession() {
@@ -1405,6 +1505,45 @@
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 
+    function insertMention(username) {
+        if (!username) return;
+        const mentionText = `@${username} `;
+        messageInput.focus();
+        messageInput.setRangeText(mentionText, messageInput.selectionStart, messageInput.selectionEnd, 'end');
+        mentionPicker.classList.remove('open');
+        userMentionMenu.style.display = 'none';
+    }
+
+    function renderMentionPicker() {
+        mentionList.innerHTML = '';
+        const availableUsers = onlineUsers.filter(u => u.user && u.user !== myUsername);
+
+        if (!availableUsers.length) {
+            const empty = document.createElement('div');
+            empty.className = 'mention-empty';
+            empty.textContent = 'No online spirits to mention.';
+            mentionList.appendChild(empty);
+            return;
+        }
+
+        availableUsers.forEach(u => {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'mention-user-btn';
+            option.textContent = `@${u.user}`;
+            option.addEventListener('click', () => insertMention(u.user));
+            mentionList.appendChild(option);
+        });
+    }
+
+    function showUserMentionMenu(username, x, y) {
+        pendingMentionUser = username;
+        userMentionAction.textContent = `Mention @${username}`;
+        userMentionMenu.style.left = `${Math.max(8, x)}px`;
+        userMentionMenu.style.top = `${Math.max(8, y)}px`;
+        userMentionMenu.style.display = 'block';
+    }
+
     messageForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const text = messageInput.value.trim();
@@ -1433,11 +1572,17 @@
 
     socket.on('receive_message', (data) => {
         appendMessage(data);
+    });
 
-        // Notification logic
-        if (data.msg.includes('@' + myUsername) && document.hidden) {
+    socket.on('mention_notification', (data) => {
+        const fromUser = data && data.from_user ? data.from_user : 'Someone';
+        const message = data && data.message ? data.message : '';
+        statusBar.textContent = `🔔 Mention from ${fromUser}`;
+        statusBar.style.color = "#38bdf8";
+
+        if ("Notification" in window && Notification.permission === 'granted') {
             new Notification("New mention in Domain", {
-                body: `${data.user}: ${data.msg}`
+                body: `${fromUser}: ${message}`
             });
         }
     });
@@ -1455,8 +1600,10 @@
     });
 
     socket.on('update_users', (users) => {
+        onlineUsers = users || [];
+        renderMentionPicker();
         usersList.innerHTML = '';
-        users.forEach(u => {
+        onlineUsers.forEach(u => {
             const div = document.createElement('div');
             div.className = 'user-item';
             let userDisplay = u.user;
@@ -1467,6 +1614,40 @@
                 <span style="color: ${u.color}; margin-right: 8px;">●</span>
                 <span style="color: white;">${userDisplay} ${u.user === myUsername ? '(You)' : ''}</span>
             `;
+
+            const showMenuForUser = (clientX, clientY) => {
+                if (!u.user || u.user === myUsername) return;
+                showUserMentionMenu(u.user, clientX, clientY);
+            };
+
+            div.addEventListener('contextmenu', (event) => {
+                event.preventDefault();
+                showMenuForUser(event.clientX, event.clientY);
+            });
+
+            div.addEventListener('dblclick', (event) => {
+                const rect = div.getBoundingClientRect();
+                showMenuForUser(event.clientX || rect.left + rect.width / 2, event.clientY || rect.top + 8);
+            });
+
+            div.addEventListener('touchend', (event) => {
+                if (!u.user || u.user === myUsername) return;
+                const now = Date.now();
+                const isDoubleTap = lastTouchedUser === u.user && (now - lastTouchTime) < 350;
+                lastTouchedUser = u.user;
+                lastTouchTime = now;
+                if (isDoubleTap) {
+                    const touch = event.changedTouches && event.changedTouches[0];
+                    const rect = div.getBoundingClientRect();
+                    showUserMentionMenu(
+                        u.user,
+                        touch ? touch.clientX : rect.left + rect.width / 2,
+                        touch ? touch.clientY : rect.top + 8
+                    );
+                    event.preventDefault();
+                }
+            }, { passive: false });
+
             usersList.appendChild(div);
         });
     });
@@ -1475,9 +1656,24 @@
         socket.emit('clear_chat');
     });
 
+    mentionBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        stickerPicker.classList.remove('open');
+        userMentionMenu.style.display = 'none';
+        mentionPicker.classList.toggle('open');
+    });
+
+    userMentionAction.addEventListener('click', () => {
+        if (pendingMentionUser) {
+            insertMention(pendingMentionUser);
+        }
+    });
+
     // Sticker picker
     stickerBtn.addEventListener('click', (e) => {
         e.stopPropagation();
+        mentionPicker.classList.remove('open');
+        userMentionMenu.style.display = 'none';
         stickerPicker.classList.toggle('open');
     });
 
@@ -1493,6 +1689,12 @@
     document.addEventListener('click', (e) => {
         if (!stickerPicker.contains(e.target) && e.target !== stickerBtn) {
             stickerPicker.classList.remove('open');
+        }
+        if (!mentionPicker.contains(e.target) && e.target !== mentionBtn) {
+            mentionPicker.classList.remove('open');
+        }
+        if (!userMentionMenu.contains(e.target)) {
+            userMentionMenu.style.display = 'none';
         }
     });
 

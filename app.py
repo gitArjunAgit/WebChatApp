@@ -4,6 +4,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from pymongo import MongoClient
 import uuid
 import json
+from datetime import datetime
 
 app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -28,9 +29,12 @@ if MONGO_URI:
     )
     db = client['arj_domain']
     messages_collection = db['messages']
+    pending_mentions_collection = db['pending_mentions']
 else:
     messages_collection = None
+    pending_mentions_collection = None
     chat_history = []
+    pending_mentions = []
 
 typing_users = set()
 active_users = {}
@@ -178,24 +182,58 @@ class PongGame:
 def notify_mentions(data):
     msg = data.get('msg', '')
     sender = data.get('user')
-    mentioned = set()
-    for token in msg.split():
-        if token.startswith('@') and len(token) > 1:
-            candidate = token[1:].strip('.,!?:;()[]{}<>"\'')
-            if candidate and candidate != sender:
-                mentioned.add(candidate)
+    mentioned = extract_mentions(msg, sender)
 
     if not mentioned:
         return
 
-    recipients = [sid for sid, info in active_users.items() if info.get('user') in mentioned]
     payload = {
         'from_user': sender,
         'message': msg,
-        'mentions': sorted(mentioned)
+        'mentions': sorted(mentioned),
+        'time': data.get('time')
     }
-    for sid in recipients:
-        socketio.emit('mention_notification', payload, room=sid)
+
+    for mentioned_user in mentioned:
+        recipients = [sid for sid, info in active_users.items() if info.get('user') == mentioned_user]
+        if recipients:
+            for sid in recipients:
+                socketio.emit('mention_notification', payload, room=sid)
+        else:
+            queue_pending_mention(mentioned_user, payload)
+
+
+def extract_mentions(msg, sender):
+    mentioned = set()
+    for token in str(msg).split():
+        if token.startswith('@') and len(token) > 1:
+            candidate = token[1:].strip('.,!?:;()[]{}<>"\'')
+            if candidate and candidate != sender:
+                mentioned.add(candidate)
+    return mentioned
+
+
+def queue_pending_mention(recipient, payload):
+    notification = {
+        'recipient': recipient,
+        'payload': payload,
+        'created_at': datetime.utcnow().isoformat()
+    }
+    if pending_mentions_collection is not None:
+        pending_mentions_collection.insert_one(notification)
+    else:
+        pending_mentions.append(notification)
+
+
+def pop_pending_mentions(recipient):
+    if pending_mentions_collection is not None:
+        queued = list(pending_mentions_collection.find({'recipient': recipient}, {'_id': 0, 'payload': 1}))
+        pending_mentions_collection.delete_many({'recipient': recipient})
+        return [item.get('payload', {}) for item in queued]
+
+    queued = [item for item in pending_mentions if item.get('recipient') == recipient]
+    pending_mentions[:] = [item for item in pending_mentions if item.get('recipient') != recipient]
+    return [item.get('payload', {}) for item in queued]
 
 
 def get_user_by_sid(sid):
@@ -230,6 +268,8 @@ def handle_join(data):
     # Send the current queue status to this user immediately upon joining
     emit('pong_queue_update', {'count': len(pong_queue)})
     emit('private_queue_update', {'count': len(private_queue)})
+    for mention_payload in pop_pending_mentions(data['user']):
+        emit('mention_notification', mention_payload, room=request.sid)
 
 
 @socketio.on('disconnect')
