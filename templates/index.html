@@ -1384,6 +1384,13 @@
         }
     });
 
+    socket.on('private_error', (data) => {
+        if (data && data.error) {
+            statusBar.textContent = `⚠ ${data.error}`;
+            statusBar.style.color = "#f43f5e";
+        }
+    });
+
     setInterval(() => {
         socket.emit('ping');
     }, 300000);

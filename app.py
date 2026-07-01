@@ -404,16 +404,23 @@ def handle_join_private(data):
 @socketio.on('private_message')
 def handle_private_message(data):
     room_id = data.get('room_id')
-    if room_id in private_rooms and request.sid in private_rooms[room_id]['members']:
-        emit('private_message', data, room=room_id)
+    if room_id not in private_rooms:
+        emit('private_error', {'error': 'Private room not found.'}, room=request.sid)
+        return
+    if request.sid not in private_rooms[room_id]['members']:
+        emit('private_error', {'error': 'You are not a member of this private room.'}, room=request.sid)
+        return
+    emit('private_message', data, room=room_id)
 
 
 @socketio.on('leave_private')
 def handle_leave_private(data):
     room_id = data.get('room_id')
     if not room_id or room_id not in private_rooms:
+        emit('private_error', {'error': 'Private room not found.'}, room=request.sid)
         return
     if request.sid not in private_rooms[room_id]['members']:
+        emit('private_error', {'error': 'You are not a member of this private room.'}, room=request.sid)
         return
 
     user = get_user_by_sid(request.sid)
