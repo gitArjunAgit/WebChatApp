@@ -359,11 +359,45 @@
         }
 
         .message-line {
-            margin-bottom: 14px;
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 22px;
+            line-height: 1.45;
+            max-width: min(82%, 560px);
+            width: fit-content;
+            word-break: break-word;
+            overflow-wrap: break-word;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sent-bubble {
+            margin-left: auto;
+            margin-right: 0;
+            border-bottom-right-radius: 8px;
+            background: linear-gradient(135deg, rgba(0, 114, 245, 0.94), rgba(38, 74, 215, 0.9));
+            box-shadow: 0 8px 18px rgba(0, 122, 255, 0.18);
+        }
+
+        .received-bubble {
+            margin-right: auto;
+            margin-left: 0;
+            border-bottom-left-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+        }
+
+        .message-meta {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .message-text {
+            color: #f8fafc;
         }
 
         .timestamp {
@@ -375,9 +409,44 @@
 
         .username {
             font-weight: 800;
-            margin-right: 12px;
             font-size: 0.95em;
             letter-spacing: 0.5px;
+        }
+
+        .message-line.sent-bubble .timestamp,
+        .message-line.sent-bubble .username {
+            color: rgba(255, 255, 255, 0.88);
+        }
+
+        .message-line.sent-bubble a {
+            color: #e2f7ff;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding: 20px 12px;
+            }
+
+            #main-layout {
+                flex-direction: column;
+            }
+
+            #chat-container {
+                padding: 20px;
+            }
+
+            #sidebar-panel {
+                max-height: none;
+            }
+
+            .message-line {
+                max-width: 92%;
+            }
+
+            #message-form,
+            #private-message-form {
+                flex-direction: column;
+            }
         }
 
         #message-form {
@@ -939,41 +1008,14 @@
         localStorage.removeItem('userSession');
     }
 
-    function appendMessage(data) {
-        const msgLine = document.createElement('div');
-        msgLine.className = 'message-line';
-
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'timestamp';
-        timeSpan.textContent = data.time ? `[${data.time}]` : '';
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'username';
-        let nameText = data.user + ":";
-
-        // Add crown if this user won the last game
-        if (lastWinner && data.user === lastWinner) {
-            nameText += ' <span class="crown-badge">👑</span>';
-        }
-
-        nameSpan.innerHTML = nameText;
-        nameSpan.style.color = data.color;
-
-        const textSpan = document.createElement('span');
-        const escapedMsg = (data.msg || '').replace(/[&<>"]|'/g, m => ({'&':'&#38;','<':'&#60;','>':'&#62;','"':'&#34;',"'":'&#39;'}[m]));
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
-
-        if (data.time) msgLine.appendChild(timeSpan);
-        msgLine.appendChild(nameSpan);
-        msgLine.appendChild(textSpan);
-        chatBox.appendChild(msgLine);
-        chatBox.scrollTop = chatBox.scrollHeight;
+    function isCurrentUserMessage(data) {
+        return !!myUsername && data.user === myUsername;
     }
 
     function appendPrivateMessage(data) {
         const msgLine = document.createElement('div');
-        msgLine.className = 'message-line';
+        const isOwnMessage = isCurrentUserMessage(data);
+        msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
         timeSpan.className = 'timestamp';
@@ -987,8 +1029,14 @@
         const textSpan = document.createElement('span');
         textSpan.textContent = data.msg || '';
 
-        if (data.time) msgLine.appendChild(timeSpan);
-        msgLine.appendChild(nameSpan);
+        const metaRow = document.createElement('div');
+        metaRow.className = 'message-meta';
+        if (data.time) metaRow.appendChild(timeSpan);
+        metaRow.appendChild(nameSpan);
+
+        textSpan.className = 'message-text';
+
+        msgLine.appendChild(metaRow);
         msgLine.appendChild(textSpan);
         privateChatBox.appendChild(msgLine);
         privateChatBox.scrollTop = privateChatBox.scrollHeight;
@@ -1063,7 +1111,8 @@
 
     function appendMessage(data) {
         const msgLine = document.createElement('div');
-        msgLine.className = 'message-line';
+        const isOwnMessage = isCurrentUserMessage(data);
+        msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
         timeSpan.className = 'timestamp';
@@ -1086,8 +1135,14 @@
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
 
-        if (data.time) msgLine.appendChild(timeSpan);
-        msgLine.appendChild(nameSpan);
+        const metaRow = document.createElement('div');
+        metaRow.className = 'message-meta';
+        if (data.time) metaRow.appendChild(timeSpan);
+        metaRow.appendChild(nameSpan);
+
+        textSpan.className = 'message-text';
+
+        msgLine.appendChild(metaRow);
         msgLine.appendChild(textSpan);
         chatBox.appendChild(msgLine);
         chatBox.scrollTop = chatBox.scrollHeight;
