@@ -524,6 +524,7 @@
         #message-form {
             display: flex;
             gap: 15px;
+            position: relative;
         }
 
         #message-input {
@@ -571,14 +572,96 @@
             box-shadow: 0 6px 24px rgba(246, 211, 101, 0.4);
         }
 
-        #clear-btn {
-            background: linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(153, 27, 27, 0.75) 100%);
-            color: #fff;
-            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+        #wipe-btn {
+            width: 100%;
+            padding: 11px;
+            margin-top: 0;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.65) 0%, rgba(120, 20, 20, 0.6) 100%);
+            color: rgba(255, 200, 200, 0.85);
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 14px;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.72em;
+            letter-spacing: 1px;
+            font-family: 'Exo 2', sans-serif;
+            transition: transform 0.2s, box-shadow 0.3s;
         }
 
-        #clear-btn:hover {
-            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.35);
+        #wipe-btn:hover {
+            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.3);
+            color: #fff;
+        }
+
+        #sticker-btn {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.8) 0%, rgba(0, 212, 255, 0.75) 100%);
+            color: #fff;
+            font-size: 1.2em;
+            padding: 13px 16px;
+            box-shadow: 0 4px 16px rgba(168, 85, 247, 0.2);
+            flex-shrink: 0;
+        }
+
+        #sticker-btn:hover {
+            box-shadow: 0 6px 24px rgba(168, 85, 247, 0.4);
+        }
+
+        #sticker-picker {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 12px);
+            right: 0;
+            width: 272px;
+            background: rgba(10, 6, 40, 0.96);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            border-radius: 20px;
+            padding: 14px;
+            box-shadow: 0 8px 40px rgba(168, 85, 247, 0.25), 0 2px 8px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(18px);
+            z-index: 500;
+        }
+
+        #sticker-picker.open {
+            display: block;
+        }
+
+        .sticker-picker-header {
+            text-align: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.68em;
+            letter-spacing: 2px;
+            color: rgba(168, 85, 247, 0.9);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .sticker-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+
+        .sticker-item {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.07);
+            border-radius: 10px;
+            padding: 7px 4px;
+            font-size: 1.3em;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.15s, transform 0.15s;
+            line-height: 1.2;
+            text-transform: none;
+            letter-spacing: 0;
+            font-weight: 400;
+        }
+
+        .sticker-item:hover {
+            background: rgba(168, 85, 247, 0.25);
+            transform: scale(1.15);
+            box-shadow: 0 2px 12px rgba(168, 85, 247, 0.3);
         }
 
         #change-identity-btn {
@@ -1003,9 +1086,29 @@
         <div id="chat-box"></div>
 
         <form id="message-form">
+            <div id="sticker-picker" aria-label="Cosmic sticker picker">
+                <div class="sticker-picker-header">✦ Cosmic Stickers ✦</div>
+                <div class="sticker-grid">
+                    <button type="button" class="sticker-item" data-sticker="🌌✨" title="Void Dust">🌌✨</button>
+                    <button type="button" class="sticker-item" data-sticker="🪐💫" title="Ring Drift">🪐💫</button>
+                    <button type="button" class="sticker-item" data-sticker="☄️🔥" title="Meteor Strike">☄️🔥</button>
+                    <button type="button" class="sticker-item" data-sticker="🌠⭐" title="Star Cascade">🌠⭐</button>
+                    <button type="button" class="sticker-item" data-sticker="👾🛸" title="Chungie Visit">👾🛸</button>
+                    <button type="button" class="sticker-item" data-sticker="🔮🌑" title="Dark Oracle">🔮🌑</button>
+                    <button type="button" class="sticker-item" data-sticker="💥🌌" title="Nebula Burst">💥🌌</button>
+                    <button type="button" class="sticker-item" data-sticker="🌀⚡" title="Cosmic Vortex">🌀⚡</button>
+                    <button type="button" class="sticker-item" data-sticker="🕳️✨" title="Event Horizon">🕳️✨</button>
+                    <button type="button" class="sticker-item" data-sticker="🌙💎" title="Crystal Moon">🌙💎</button>
+                    <button type="button" class="sticker-item" data-sticker="🚀🌟" title="Ascension">🚀🌟</button>
+                    <button type="button" class="sticker-item" data-sticker="🦋🌌" title="Astral Drift">🦋🌌</button>
+                    <button type="button" class="sticker-item" data-sticker="⚡🔮" title="Storm Oracle">⚡🔮</button>
+                    <button type="button" class="sticker-item" data-sticker="🌊🌑" title="Dark Tide">🌊🌑</button>
+                    <button type="button" class="sticker-item" data-sticker="🎇🪐" title="Galaxy Bloom">🎇🪐</button>
+                </div>
+            </div>
             <input type="text" id="message-input" placeholder="Transmit your message to the cosmos..." required autocomplete="off">
             <button type="submit" id="send-btn">Send</button>
-            <button type="button" id="clear-btn">Wipe</button>
+            <button type="button" id="sticker-btn" title="Cosmic Stickers">🌌</button>
         </form>
 
         <div class="private-room-shell" id="private-room-shell">
@@ -1026,6 +1129,7 @@
             <button type="button" id="join-flappy-btn">🐦 Flappy Bird</button>
             <button type="button" id="join-private-btn">Join Private Room</button>
             <button type="button" id="change-identity-btn">Change Identity</button>
+            <button type="button" id="wipe-btn" title="Wipe all chat messages">🗑 Wipe Chat</button>
         </div>
         <div class="side-box" style="flex: 1;">
             <h3>Active Spirits</h3>
@@ -1091,7 +1195,9 @@
     const chatBox = document.getElementById('chat-box');
     const messageForm = document.getElementById('message-form');
     const messageInput = document.getElementById('message-input');
-    const clearBtn = document.getElementById('clear-btn');
+    const wipeBtn = document.getElementById('wipe-btn');
+    const stickerBtn = document.getElementById('sticker-btn');
+    const stickerPicker = document.getElementById('sticker-picker');
     const statusBar = document.getElementById('status-bar');
     const typingList = document.getElementById('typing-list');
     const usersList = document.getElementById('users-list');
@@ -1365,8 +1471,29 @@
         });
     });
 
-    clearBtn.addEventListener('click', () => {
+    wipeBtn.addEventListener('click', () => {
         socket.emit('clear_chat');
+    });
+
+    // Sticker picker
+    stickerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        stickerPicker.classList.toggle('open');
+    });
+
+    document.querySelectorAll('.sticker-item').forEach(item => {
+        item.addEventListener('click', () => {
+            const sticker = item.dataset.sticker;
+            messageInput.focus();
+            messageInput.setRangeText(sticker, messageInput.selectionStart, messageInput.selectionEnd, 'end');
+            stickerPicker.classList.remove('open');
+        });
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!stickerPicker.contains(e.target) && e.target !== stickerBtn) {
+            stickerPicker.classList.remove('open');
+        }
     });
 
     socket.on('chat_cleared', () => {
