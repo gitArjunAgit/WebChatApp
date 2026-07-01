@@ -1484,10 +1484,8 @@
     document.querySelectorAll('.sticker-item').forEach(item => {
         item.addEventListener('click', () => {
             const sticker = item.dataset.sticker;
-            const pos = messageInput.selectionStart || messageInput.value.length;
-            messageInput.value = messageInput.value.slice(0, pos) + sticker + messageInput.value.slice(pos);
-            messageInput.selectionStart = messageInput.selectionEnd = pos + sticker.length;
             messageInput.focus();
+            messageInput.setRangeText(sticker, messageInput.selectionStart, messageInput.selectionEnd, 'end');
             stickerPicker.classList.remove('open');
         });
     });
