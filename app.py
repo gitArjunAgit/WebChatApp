@@ -37,7 +37,7 @@ active_users = {}
 pong_queue = []
 active_games = {}  # game_id -> game_state
 
-# NEW: 3-person private room support
+# Private room support
 private_queue = []
 private_rooms = {}
 
@@ -361,7 +361,7 @@ def handle_join_pong(data):
         socketio.emit('pong_queue_update', {'count': len(pong_queue)})
 
 
-# NEW: 3-person private room
+# Private room matching (2 participants)
 @socketio.on('join_private')
 def handle_join_private(data):
     sid = request.sid
@@ -373,38 +373,30 @@ def handle_join_private(data):
 
     socketio.emit('private_queue_update', {'count': len(private_queue)})
 
-    if len(private_queue) >= 3:
+    if len(private_queue) >= 2:
         p1 = private_queue.pop(0)
         p2 = private_queue.pop(0)
-        p3 = private_queue.pop(0)
 
         room_id = f"private-{uuid.uuid4()}"
         private_rooms[room_id] = {
-            'members': {p1['sid'], p2['sid'], p3['sid']},
-            'users': [p1['user'], p2['user'], p3['user']]
+            'members': {p1['sid'], p2['sid']},
+            'users': [p1['user'], p2['user']]
         }
 
         join_room(room_id, sid=p1['sid'])
         join_room(room_id, sid=p2['sid'])
-        join_room(room_id, sid=p3['sid'])
 
         socketio.emit('private_started', {
             'room_id': room_id,
             'player_number': 1,
-            'members': [p1['user'], p2['user'], p3['user']]
+            'members': [p1['user'], p2['user']]
         }, room=p1['sid'])
 
         socketio.emit('private_started', {
             'room_id': room_id,
             'player_number': 2,
-            'members': [p1['user'], p2['user'], p3['user']]
+            'members': [p1['user'], p2['user']]
         }, room=p2['sid'])
-
-        socketio.emit('private_started', {
-            'room_id': room_id,
-            'player_number': 3,
-            'members': [p1['user'], p2['user'], p3['user']]
-        }, room=p3['sid'])
 
         socketio.emit('private_queue_update', {'count': len(private_queue)})
 
@@ -412,7 +404,7 @@ def handle_join_private(data):
 @socketio.on('private_message')
 def handle_private_message(data):
     room_id = data.get('room_id')
-    if room_id in private_rooms:
+    if room_id in private_rooms and request.sid in private_rooms[room_id]['members']:
         emit('private_message', data, room=room_id)
 
 
@@ -420,6 +412,8 @@ def handle_private_message(data):
 def handle_leave_private(data):
     room_id = data.get('room_id')
     if not room_id or room_id not in private_rooms:
+        return
+    if request.sid not in private_rooms[room_id]['members']:
         return
 
     user = get_user_by_sid(request.sid)

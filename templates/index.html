@@ -790,7 +790,7 @@
 
         <div class="private-room-shell" id="private-room-shell">
             <h3 style="color:#f6d365;margin-top:0;">Private Room</h3>
-            <div class="private-members" id="private-members">Waiting for 3 users...</div>
+            <div class="private-members" id="private-members">Waiting for 2 users...</div>
             <div id="private-chat-box"></div>
             <form id="private-message-form">
                 <input type="text" id="private-message-input" placeholder="Message the private room..." autocomplete="off">
@@ -997,7 +997,7 @@
     function renderPrivateMembers() {
         privateMembers.textContent = currentPrivateMembers.length
             ? `Room members: ${currentPrivateMembers.join(', ')}`
-            : 'Waiting for 3 users...';
+            : 'Waiting for 2 users...';
     }
 
     socket.on('connect', () => {
@@ -1357,9 +1357,9 @@
     });
 
     socket.on('private_queue_update', (data) => {
-        joinPrivateBtn.textContent = data.count >= 3
+        joinPrivateBtn.textContent = data.count >= 2
             ? 'Private Room Starting...'
-            : `Join Private Room (${data.count}/3)`;
+            : `Join Private Room (${data.count}/2)`;
     });
 
     socket.on('private_started', (data) => {
