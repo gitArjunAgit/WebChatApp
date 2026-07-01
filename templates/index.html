@@ -4,18 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>realm of the chungies</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Exo+2:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
     <style>
         body {
-            font-family: 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Exo 2', 'Segoe UI', Roboto, sans-serif;
             max-width: 1050px;
             margin: 0 auto;
             padding: 40px 20px;
-            color: #f1f5f9;
+            color: #e8edf5;
             min-height: 100vh;
-            background: radial-gradient(circle at 50% 50%, #160b3b 0%, #0b0726 50%, #020010 100%);
+            background: radial-gradient(ellipse at 30% 20%, #1a0a40 0%, #0b0726 45%, #020010 100%);
             position: relative;
             overflow-x: hidden;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: rgba(168, 185, 210, 0.45);
+            font-family: 'Exo 2', sans-serif;
+        }
+
+        select option {
+            background: #0f0b2e;
+            color: #e8edf5;
         }
 
         .audio-control {
@@ -23,16 +36,26 @@
             top: 20px;
             left: 20px;
             z-index: 200;
-            background: rgba(11, 7, 38, 0.8);
-            padding: 10px 15px;
-            border-radius: 12px;
-            border: 1px solid #f6d365;
+            background: rgba(11, 7, 38, 0.65);
+            padding: 9px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(246, 211, 101, 0.18);
             color: #f6d365;
-            font-size: 0.8em;
+            font-size: 0.78em;
             cursor: pointer;
             display: flex;
             align-items: center;
             gap: 8px;
+            backdrop-filter: blur(12px);
+            box-shadow: 0 2px 16px rgba(168, 85, 247, 0.12);
+            font-family: 'Exo 2', sans-serif;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            transition: box-shadow 0.3s;
+        }
+
+        .audio-control:hover {
+            box-shadow: 0 2px 20px rgba(246, 211, 101, 0.22);
         }
 
         .cosmos-layer {
@@ -102,59 +125,76 @@
         }
 
         #entry-box {
-            background: rgba(11, 7, 38, 0.9);
-            padding: 40px;
-            border-radius: 24px;
-            border: 2px solid #a855f7;
-            box-shadow: 0 0 50px rgba(168, 85, 247, 0.4);
+            background: rgba(11, 7, 38, 0.75);
+            padding: 44px 40px;
+            border-radius: 28px;
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            box-shadow: 0 0 60px rgba(168, 85, 247, 0.18), 0 0 120px rgba(168, 85, 247, 0.08), inset 0 1px 0 rgba(255,255,255,0.05);
             text-align: center;
             max-width: 400px;
             width: 100%;
+            backdrop-filter: blur(20px);
         }
 
         #entry-box h1 {
             color: #f6d365;
             text-transform: uppercase;
-            letter-spacing: 4px;
+            letter-spacing: 6px;
             margin-top: 0;
-            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+            text-shadow: 0 0 20px rgba(246, 211, 101, 0.4), 0 0 40px rgba(246, 211, 101, 0.15);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.6em;
         }
 
         #entry-box p {
-            color: #cbd5e1;
-            margin-bottom: 25px;
-            line-height: 1.6;
+            color: #a8b8d0;
+            margin-bottom: 28px;
+            line-height: 1.7;
+            font-size: 0.95em;
+            font-weight: 400;
         }
 
         #username-input, #color-picker {
             width: 85%;
-            padding: 16px;
-            margin-bottom: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 14px;
-            font-size: 1.1em;
-            color: #fff;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            font-size: 1em;
+            color: #e8edf5;
             text-align: center;
+            font-family: 'Exo 2', sans-serif;
+            transition: border-color 0.25s, box-shadow 0.25s;
         }
 
         #username-input:focus, #color-picker:focus {
             outline: none;
-            border-color: #a855f7;
-            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.12), 0 0 20px rgba(168, 85, 247, 0.2);
         }
 
         #join-btn {
             width: 95%;
-            padding: 16px;
-            background: linear-gradient(135deg, #a855f7 0%, #fda085 100%);
+            padding: 14px;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(253, 160, 133, 0.85) 100%);
             color: #fff;
-            font-weight: 800;
+            font-weight: 700;
             border: none;
-            border-radius: 14px;
+            border-radius: 16px;
             cursor: pointer;
             text-transform: uppercase;
-            font-size: 1.1em;
+            font-size: 1em;
+            letter-spacing: 2px;
+            font-family: 'Orbitron', sans-serif;
+            transition: transform 0.2s, box-shadow 0.3s;
+            box-shadow: 0 4px 20px rgba(168, 85, 247, 0.3);
+        }
+
+        #join-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 28px rgba(168, 85, 247, 0.5);
         }
 
         /* Change Identity Modal */
@@ -174,46 +214,53 @@
         }
 
         #change-identity-box {
-            background: rgba(11, 7, 38, 0.9);
-            padding: 40px;
-            border-radius: 24px;
-            border: 2px solid #a855f7;
-            box-shadow: 0 0 50px rgba(168, 85, 247, 0.4);
+            background: rgba(11, 7, 38, 0.75);
+            padding: 44px 40px;
+            border-radius: 28px;
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            box-shadow: 0 0 60px rgba(168, 85, 247, 0.18), 0 0 120px rgba(168, 85, 247, 0.08), inset 0 1px 0 rgba(255,255,255,0.05);
             text-align: center;
             max-width: 400px;
             width: 100%;
+            backdrop-filter: blur(20px);
         }
 
         #change-identity-box h1 {
             color: #f6d365;
             text-transform: uppercase;
-            letter-spacing: 4px;
+            letter-spacing: 6px;
             margin-top: 0;
-            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+            text-shadow: 0 0 20px rgba(246, 211, 101, 0.4), 0 0 40px rgba(246, 211, 101, 0.15);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.6em;
         }
 
         #change-identity-box p {
-            color: #cbd5e1;
-            margin-bottom: 25px;
-            line-height: 1.6;
+            color: #a8b8d0;
+            margin-bottom: 28px;
+            line-height: 1.7;
+            font-size: 0.95em;
         }
 
         #change-username-input, #change-color-picker {
             width: 85%;
-            padding: 16px;
-            margin-bottom: 20px;
-            background: rgba(0, 0, 0, 0.5);
-            border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 14px;
-            font-size: 1.1em;
-            color: #fff;
+            padding: 14px 18px;
+            margin-bottom: 16px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            font-size: 1em;
+            color: #e8edf5;
             text-align: center;
+            font-family: 'Exo 2', sans-serif;
+            transition: border-color 0.25s, box-shadow 0.25s;
         }
 
         #change-username-input:focus, #change-color-picker:focus {
             outline: none;
-            border-color: #a855f7;
-            box-shadow: 0 0 15px rgba(168, 85, 247, 0.5);
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.12), 0 0 20px rgba(168, 85, 247, 0.2);
         }
 
         .change-identity-buttons {
@@ -224,23 +271,38 @@
 
         #confirm-change-btn, #cancel-change-btn {
             width: 45%;
-            padding: 16px;
-            font-weight: 800;
+            padding: 13px;
+            font-weight: 700;
             border: none;
-            border-radius: 14px;
+            border-radius: 16px;
             cursor: pointer;
             text-transform: uppercase;
-            font-size: 1em;
+            font-size: 0.88em;
+            letter-spacing: 1.5px;
+            font-family: 'Orbitron', sans-serif;
+            transition: transform 0.2s, box-shadow 0.3s;
         }
 
         #confirm-change-btn {
-            background: linear-gradient(135deg, #a855f7 0%, #fda085 100%);
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.9) 0%, rgba(253, 160, 133, 0.85) 100%);
             color: #fff;
+            box-shadow: 0 4px 16px rgba(168, 85, 247, 0.25);
+        }
+
+        #confirm-change-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(168, 85, 247, 0.45);
         }
 
         #cancel-change-btn {
-            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(153, 27, 27, 0.75) 100%);
             color: #fff;
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+        }
+
+        #cancel-change-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.4);
         }
 
         #main-layout {
@@ -250,12 +312,12 @@
 
         #chat-container {
             flex: 3;
-            background: rgba(11, 7, 38, 0.8);
+            background: rgba(11, 7, 38, 0.65);
             padding: 30px;
-            border-radius: 24px;
-            border: 2px solid #f6d365;
-            box-shadow: 0 0 35px rgba(168, 85, 247, 0.35);
-            backdrop-filter: blur(8px);
+            border-radius: 28px;
+            border: 1px solid rgba(246, 211, 101, 0.12);
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.15), 0 0 80px rgba(168, 85, 247, 0.05), inset 0 1px 0 rgba(255,255,255,0.04);
+            backdrop-filter: blur(16px);
         }
 
         #sidebar-panel {
@@ -269,56 +331,61 @@
         .action-btn-cluster {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 6px;
+            gap: 8px;
         }
 
         .action-btn-cluster button {
             width: 100%;
-            padding: 7px 5px;
+            padding: 10px 5px;
             margin: 0;
             font-size: 0.72em;
-            border-radius: 10px;
+            border-radius: 14px;
         }
 
         .side-box {
-            background: rgba(11, 7, 38, 0.6);
+            background: rgba(11, 7, 38, 0.55);
             padding: 20px;
             border-radius: 24px;
-            border: 2px solid rgba(246, 211, 101, 0.2);
-            backdrop-filter: blur(8px);
+            border: 1px solid rgba(246, 211, 101, 0.1);
+            backdrop-filter: blur(14px);
             overflow-y: auto;
+            box-shadow: 0 2px 24px rgba(0, 0, 0, 0.3);
         }
 
         .side-box h3 {
             margin-top: 0;
             color: #f6d365;
             text-transform: uppercase;
-            font-size: 0.9em;
-            letter-spacing: 2px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.82em;
+            letter-spacing: 2.5px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
             padding-bottom: 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 600;
         }
 
         .user-item {
             padding: 8px 12px;
-            font-size: 0.9em;
-            font-weight: bold;
+            font-size: 0.88em;
+            font-weight: 600;
             transition: background 0.3s;
-            border-radius: 8px;
+            border-radius: 10px;
+            color: #c8d4e0;
         }
 
         .user-item:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: rgba(255, 255, 255, 0.04);
         }
 
         .typing-pill {
-            background: rgba(255, 255, 255, 0.04);
-            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 10px 16px;
             border-radius: 12px;
-            margin-bottom: 10px;
-            font-size: 0.85em;
-            border-left: 3px solid #f6d365;
+            margin-bottom: 8px;
+            font-size: 0.82em;
+            border-left: 2px solid rgba(246, 211, 101, 0.5);
             animation: pulse 1.5s infinite ease-in-out;
+            color: #a8b8d0;
         }
 
         @keyframes pulse {
@@ -329,10 +396,11 @@
 
         #status-bar {
             text-align: center;
-            font-size: 0.8em;
+            font-size: 0.78em;
             margin-bottom: 15px;
             color: #64748b;
-            font-weight: bold;
+            font-weight: 500;
+            letter-spacing: 0.5px;
         }
 
         h2 {
@@ -340,12 +408,13 @@
             color: #f6d365;
             font-weight: 900;
             text-align: center;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.07);
             padding-bottom: 20px;
             text-transform: uppercase;
-            letter-spacing: 4px;
-            font-size: 2em;
-            text-shadow: 0 0 15px rgba(246, 211, 101, 0.5);
+            letter-spacing: 5px;
+            font-size: 1.8em;
+            text-shadow: 0 0 20px rgba(246, 211, 101, 0.35), 0 0 40px rgba(246, 211, 101, 0.1);
+            font-family: 'Orbitron', sans-serif;
         }
 
         #chat-box {
@@ -353,40 +422,41 @@
             overflow-y: auto;
             padding: 20px;
             margin-bottom: 25px;
-            background: rgba(0, 0, 0, 0.5);
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(168, 85, 247, 0.3) transparent;
         }
 
         .message-line {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            margin-bottom: 12px;
-            padding: 10px 14px;
-            border-radius: 22px;
-            line-height: 1.45;
+            gap: 5px;
+            margin-bottom: 10px;
+            padding: 10px 16px;
+            border-radius: 20px;
+            line-height: 1.5;
             max-width: min(82%, 560px);
             width: fit-content;
             word-break: break-word;
             overflow-wrap: break-word;
-            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .sent-bubble {
             margin-left: auto;
             margin-right: 0;
-            border-bottom-right-radius: 8px;
-            background: linear-gradient(135deg, rgba(0, 114, 245, 0.94), rgba(38, 74, 215, 0.9));
-            box-shadow: 0 8px 18px rgba(0, 122, 255, 0.18);
+            border-bottom-right-radius: 6px;
+            background: linear-gradient(135deg, rgba(0, 114, 245, 0.85), rgba(38, 74, 215, 0.8));
+            box-shadow: 0 4px 20px rgba(0, 122, 255, 0.2);
         }
 
         .received-bubble {
             margin-right: auto;
             margin-left: 0;
-            border-bottom-left-radius: 8px;
-            background: rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+            border-bottom-left-radius: 6px;
+            background: rgba(255, 255, 255, 0.06);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
         }
 
         .message-meta {
@@ -401,16 +471,18 @@
         }
 
         .timestamp {
-            font-size: 0.75em;
-            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.72em;
+            color: rgba(255, 255, 255, 0.35);
             margin-right: 10px;
-            font-family: monospace;
+            font-family: 'Exo 2', monospace;
+            font-weight: 400;
         }
 
         .username {
-            font-weight: 800;
-            font-size: 0.95em;
-            letter-spacing: 0.5px;
+            font-weight: 700;
+            font-size: 0.9em;
+            letter-spacing: 0.6px;
+            font-family: 'Exo 2', sans-serif;
         }
 
         .message-line.sent-bubble .timestamp,
@@ -456,96 +528,137 @@
 
         #message-input {
             flex-grow: 1;
-            padding: 16px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.15);
-            border-radius: 14px;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
             font-size: 1em;
-            color: #fff;
+            color: #e8edf5;
+            font-family: 'Exo 2', sans-serif;
+            transition: border-color 0.25s, box-shadow 0.25s;
         }
 
         #message-input:focus {
             outline: none;
-            border-color: #f6d365;
-            box-shadow: 0 0 12px rgba(246, 211, 101, 0.4);
+            border-color: rgba(246, 211, 101, 0.5);
+            box-shadow: 0 0 0 3px rgba(246, 211, 101, 0.08), 0 0 16px rgba(246, 211, 101, 0.15);
         }
 
         button {
-            padding: 16px 24px;
-            font-weight: 800;
+            padding: 13px 22px;
+            font-weight: 700;
             border: none;
-            border-radius: 14px;
+            border-radius: 16px;
             cursor: pointer;
             text-transform: uppercase;
-            transition: transform 0.2s;
+            letter-spacing: 1px;
+            font-family: 'Exo 2', sans-serif;
+            font-size: 0.88em;
+            transition: transform 0.2s, box-shadow 0.3s;
         }
 
         button:hover {
-            transform: scale(1.02);
+            transform: translateY(-2px);
         }
 
         #send-btn {
-            background: linear-gradient(135deg, #f6d365 0%, #fda085 100%);
+            background: linear-gradient(135deg, rgba(246, 211, 101, 0.9) 0%, rgba(253, 160, 133, 0.9) 100%);
             color: #0c0822;
+            box-shadow: 0 4px 16px rgba(246, 211, 101, 0.2);
+        }
+
+        #send-btn:hover {
+            box-shadow: 0 6px 24px rgba(246, 211, 101, 0.4);
         }
 
         #clear-btn {
-            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(153, 27, 27, 0.75) 100%);
             color: #fff;
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+        }
+
+        #clear-btn:hover {
+            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.35);
         }
 
         #change-identity-btn {
             width: 100%;
-            padding: 12px;
-            margin-top: 20px;
-            background: linear-gradient(135deg, #00D4FF 0%, #a855f7 100%);
+            padding: 11px;
+            margin-top: 0;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%);
             color: white;
             border: none;
-            border-radius: 12px;
+            border-radius: 14px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.9em;
+            font-size: 0.78em;
+            letter-spacing: 1px;
+            font-family: 'Exo 2', sans-serif;
+            transition: transform 0.2s, box-shadow 0.3s;
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.15);
         }
 
         #change-identity-btn:hover {
-            transform: scale(1.02);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(0, 212, 255, 0.3);
         }
 
         /* Additions */
         #join-pong-btn, #join-flappy-btn, #join-private-btn, #leave-private-btn {
             width: 100%;
-            padding: 12px;
-            margin-bottom: 12px;
+            padding: 11px;
+            margin-bottom: 0;
             color: white;
             border: none;
-            border-radius: 12px;
+            border-radius: 14px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             text-transform: uppercase;
+            font-size: 0.78em;
+            letter-spacing: 1px;
+            font-family: 'Exo 2', sans-serif;
+            transition: transform 0.2s, box-shadow 0.3s;
         }
 
         #join-pong-btn {
-            background: #a855f7;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.85) 0%, rgba(99, 50, 180, 0.8) 100%);
+            box-shadow: 0 4px 16px rgba(168, 85, 247, 0.2);
+        }
+
+        #join-pong-btn:hover {
+            box-shadow: 0 6px 24px rgba(168, 85, 247, 0.4);
         }
 
         #join-private-btn {
-            background: #00D4FF;
-            color: #02111f;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.85) 0%, rgba(0, 160, 200, 0.8) 100%);
+            color: #fff;
+            box-shadow: 0 4px 16px rgba(0, 212, 255, 0.15);
+        }
+
+        #join-private-btn:hover {
+            box-shadow: 0 6px 24px rgba(0, 212, 255, 0.3);
         }
 
         #leave-private-btn {
-            background: #ef4444;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(153, 27, 27, 0.75) 100%);
             color: #fff;
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15);
+        }
+
+        #leave-private-btn:hover {
+            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.35);
         }
 
         .private-room-shell {
             display: none;
             margin-top: 20px;
             padding: 18px;
-            border-radius: 20px;
-            border: 1px solid rgba(255,255,255,0.12);
-            background: rgba(0,0,0,0.25);
+            border-radius: 22px;
+            border: 1px solid rgba(0, 212, 255, 0.15);
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 20px rgba(0, 212, 255, 0.08);
         }
 
         .private-members {
@@ -559,9 +672,11 @@
             overflow-y: auto;
             padding: 16px;
             margin-bottom: 16px;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.3);
             border-radius: 16px;
-            border: 1px solid rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.05);
+            scrollbar-width: thin;
+            scrollbar-color: rgba(0, 212, 255, 0.2) transparent;
         }
 
         #private-message-form {
@@ -571,18 +686,20 @@
 
         #private-message-input {
             flex-grow: 1;
-            padding: 16px;
-            background: rgba(0,0,0,0.3);
-            border: 2px solid rgba(255,255,255,0.15);
+            padding: 12px 16px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.1);
             border-radius: 14px;
-            font-size: 1em;
-            color: #fff;
+            font-size: 0.95em;
+            color: #e8edf5;
+            font-family: 'Exo 2', sans-serif;
+            transition: border-color 0.25s, box-shadow 0.25s;
         }
 
         #private-message-input:focus {
             outline: none;
-            border-color: #00D4FF;
-            box-shadow: 0 0 12px rgba(0, 212, 255, 0.35);
+            border-color: rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.08), 0 0 14px rgba(0, 212, 255, 0.2);
         }
 
         #pong-arena {
@@ -592,7 +709,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: #020010;
+            background: rgba(2, 0, 16, 0.97);
             z-index: 9999;
             color: #f6d365;
             flex-direction: column;
@@ -609,13 +726,21 @@
             padding: 20px;
         }
 
+        #pong-game-container h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6em;
+            letter-spacing: 3px;
+            text-shadow: 0 0 20px rgba(246, 211, 101, 0.4);
+        }
+
         #pong-canvas {
             background: #0b0726;
-            border: 3px solid #f6d365;
-            box-shadow: 0 0 30px rgba(246, 211, 101, 0.5);
+            border: 1px solid rgba(246, 211, 101, 0.25);
+            box-shadow: 0 0 40px rgba(246, 211, 101, 0.2), 0 0 80px rgba(246, 211, 101, 0.08);
             display: block;
             max-width: 95vw;
             max-height: 80vh;
+            border-radius: 8px;
         }
 
         .pong-info {
@@ -624,9 +749,10 @@
             width: 100%;
             max-width: 1200px;
             color: #f6d365;
-            font-weight: bold;
+            font-weight: 700;
             font-size: 1.5em;
             text-align: center;
+            font-family: 'Orbitron', sans-serif;
         }
 
         .pong-info-section {
@@ -640,19 +766,25 @@
         }
 
         #exit-pong-btn {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            padding: 11px 24px;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(153, 27, 27, 0.75) 100%);
             color: #fff;
             border: none;
-            border-radius: 12px;
+            border-radius: 14px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             text-transform: uppercase;
             margin-top: 20px;
+            font-family: 'Exo 2', sans-serif;
+            letter-spacing: 1px;
+            font-size: 0.88em;
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+            transition: transform 0.2s, box-shadow 0.3s;
         }
 
         #exit-pong-btn:hover {
-            transform: scale(1.05);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.4);
         }
 
         .game-ended-overlay {
@@ -671,21 +803,24 @@
         }
 
         .game-ended-box {
-            background: rgba(11, 7, 38, 0.9);
-            padding: 40px;
-            border-radius: 24px;
-            border: 2px solid #a855f7;
-            box-shadow: 0 0 50px rgba(168, 85, 247, 0.4);
+            background: rgba(11, 7, 38, 0.85);
+            padding: 44px 40px;
+            border-radius: 28px;
+            border: 1px solid rgba(168, 85, 247, 0.25);
+            box-shadow: 0 0 60px rgba(168, 85, 247, 0.2), inset 0 1px 0 rgba(255,255,255,0.05);
             text-align: center;
             max-width: 500px;
+            backdrop-filter: blur(20px);
         }
 
         .game-ended-box h1 {
             color: #1BFF9B;
-            font-size: 2.5em;
+            font-size: 2.2em;
             margin: 0 0 20px 0;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 3px;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 20px rgba(27, 255, 155, 0.4);
         }
 
         .game-ended-box p {
@@ -714,8 +849,13 @@
 
         /* ===== Flappy Bird ===== */
         #join-flappy-btn {
-            background: #1BFF9B;
+            background: linear-gradient(135deg, rgba(27, 255, 155, 0.85) 0%, rgba(0, 200, 120, 0.8) 100%);
             color: #02111f;
+            box-shadow: 0 4px 16px rgba(27, 255, 155, 0.2);
+        }
+
+        #join-flappy-btn:hover {
+            box-shadow: 0 6px 24px rgba(27, 255, 155, 0.4);
         }
 
         #flappy-arena {
@@ -735,32 +875,43 @@
         #flappy-arena h1 {
             color: #f6d365;
             text-align: center;
-            font-size: 1.8em;
+            font-size: 1.6em;
             margin: 0;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-shadow: 0 0 16px rgba(246, 211, 101, 0.35);
         }
 
         #flappy-canvas {
             background: #020010;
-            border: 3px solid #a855f7;
-            box-shadow: 0 0 30px rgba(168, 85, 247, 0.5);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            box-shadow: 0 0 40px rgba(168, 85, 247, 0.2), 0 0 80px rgba(168, 85, 247, 0.08);
             display: block;
             max-width: 95vw;
             max-height: 75vh;
+            border-radius: 8px;
         }
 
         #exit-flappy-btn {
-            padding: 12px 24px;
-            background: linear-gradient(135deg, #ef4444 0%, #991b1b 100%);
+            padding: 11px 24px;
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(153, 27, 27, 0.75) 100%);
             color: #fff;
             border: none;
-            border-radius: 12px;
+            border-radius: 14px;
             cursor: pointer;
-            font-weight: bold;
+            font-weight: 600;
             text-transform: uppercase;
+            font-family: 'Exo 2', sans-serif;
+            letter-spacing: 1px;
+            font-size: 0.88em;
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.2);
+            transition: transform 0.2s, box-shadow 0.3s;
         }
 
         #exit-flappy-btn:hover {
-            transform: scale(1.05);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(239, 68, 68, 0.4);
         }
     </style>
 </head>
@@ -858,12 +1009,12 @@
         </form>
 
         <div class="private-room-shell" id="private-room-shell">
-            <h3 style="color:#f6d365;margin-top:0;">Private Room</h3>
+            <h3 style="color:#f6d365;margin-top:0;font-family:'Orbitron',sans-serif;font-size:0.82em;letter-spacing:2px;text-transform:uppercase;">Private Room</h3>
             <div class="private-members" id="private-members">Waiting for 2 users...</div>
             <div id="private-chat-box"></div>
             <form id="private-message-form">
                 <input type="text" id="private-message-input" placeholder="Message the private room..." autocomplete="off">
-                <button type="submit" style="background:#00D4FF;color:#02111f;">Send Private</button>
+                <button type="submit" style="background:linear-gradient(135deg,rgba(0,212,255,0.85) 0%,rgba(0,160,200,0.8) 100%);color:#fff;box-shadow:0 4px 16px rgba(0,212,255,0.15);letter-spacing:0.5px;font-family:'Exo 2',sans-serif;font-size:0.78em;">Send</button>
                 <button type="button" id="leave-private-btn">Leave</button>
             </form>
         </div>
@@ -1373,7 +1524,7 @@
                 <h1>${title}</h1>
                 <p>${message}</p>
                 <div class="final-score">${p1Score} - ${p2Score}</div>
-                <button onclick="location.reload()" style="padding: 12px 24px; background: linear-gradient(135deg, #a855f7 0%, #fda085 100%); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase; width: 100%;">
+                <button onclick="location.reload()" style="padding: 13px 24px; background: linear-gradient(135deg, rgba(168,85,247,0.9) 0%, rgba(253,160,133,0.85) 100%); color: white; border: none; border-radius: 16px; cursor: pointer; font-weight: 700; text-transform: uppercase; width: 100%; font-family: 'Orbitron', sans-serif; font-size: 0.88em; letter-spacing: 2px; box-shadow: 0 4px 20px rgba(168,85,247,0.3); transition: transform 0.2s, box-shadow 0.3s;">
                     Return to Realm
                 </button>
             </div>
