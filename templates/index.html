@@ -1012,45 +1012,6 @@
         return !!myUsername && data.user === myUsername;
     }
 
-    function appendMessage(data) {
-        const msgLine = document.createElement('div');
-        const isOwnMessage = isCurrentUserMessage(data);
-        msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
-
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'timestamp';
-        timeSpan.textContent = data.time ? `[${data.time}]` : '';
-
-        const nameSpan = document.createElement('span');
-        nameSpan.className = 'username';
-        let nameText = data.user + ":";
-
-        // Add crown if this user won the last game
-        if (lastWinner && data.user === lastWinner) {
-            nameText += ' <span class="crown-badge">👑</span>';
-        }
-
-        nameSpan.innerHTML = nameText;
-        nameSpan.style.color = data.color;
-
-        const textSpan = document.createElement('span');
-        const escapedMsg = (data.msg || '').replace(/[&<>"]|'/g, m => ({'&':'&#38;','<':'&#60;','>':'&#62;','"':'&#34;',"'":'&#39;'}[m]));
-        const urlRegex = /(https?:\/\/[^\s]+)/g;
-        textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
-
-        const metaRow = document.createElement('div');
-        metaRow.className = 'message-meta';
-        if (data.time) metaRow.appendChild(timeSpan);
-        metaRow.appendChild(nameSpan);
-
-        textSpan.className = 'message-text';
-
-        msgLine.appendChild(metaRow);
-        msgLine.appendChild(textSpan);
-        chatBox.appendChild(msgLine);
-        chatBox.scrollTop = chatBox.scrollHeight;
-    }
-
     function appendPrivateMessage(data) {
         const msgLine = document.createElement('div');
         const isOwnMessage = isCurrentUserMessage(data);
