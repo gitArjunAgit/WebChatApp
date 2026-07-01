@@ -359,11 +359,45 @@
         }
 
         .message-line {
-            margin-bottom: 14px;
-            padding: 12px 16px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-bottom: 12px;
+            padding: 10px 14px;
+            border-radius: 22px;
+            line-height: 1.45;
+            max-width: min(82%, 560px);
+            width: fit-content;
+            word-break: break-word;
+            overflow-wrap: anywhere;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .sent-bubble {
+            margin-left: auto;
+            margin-right: 0;
+            border-bottom-right-radius: 8px;
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.75), rgba(106, 90, 255, 0.72));
+            box-shadow: 0 8px 18px rgba(0, 212, 255, 0.18);
+        }
+
+        .received-bubble {
+            margin-right: auto;
+            margin-left: 0;
+            border-bottom-left-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.22);
+        }
+
+        .message-meta {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .message-text {
+            color: #f8fafc;
         }
 
         .timestamp {
@@ -375,9 +409,44 @@
 
         .username {
             font-weight: 800;
-            margin-right: 12px;
             font-size: 0.95em;
             letter-spacing: 0.5px;
+        }
+
+        .sent-bubble .timestamp,
+        .sent-bubble .username {
+            color: rgba(255, 255, 255, 0.88) !important;
+        }
+
+        .sent-bubble a {
+            color: #e2f7ff !important;
+        }
+
+        @media (max-width: 900px) {
+            body {
+                padding: 20px 12px;
+            }
+
+            #main-layout {
+                flex-direction: column;
+            }
+
+            #chat-container {
+                padding: 20px;
+            }
+
+            #sidebar-panel {
+                max-height: none;
+            }
+
+            .message-line {
+                max-width: 92%;
+            }
+
+            #message-form,
+            #private-message-form {
+                flex-direction: column;
+            }
         }
 
         #message-form {
@@ -941,7 +1010,8 @@
 
     function appendMessage(data) {
         const msgLine = document.createElement('div');
-        msgLine.className = 'message-line';
+        const isOwnMessage = data.user === myUsername;
+        msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
         timeSpan.className = 'timestamp';
@@ -964,8 +1034,14 @@
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
 
-        if (data.time) msgLine.appendChild(timeSpan);
-        msgLine.appendChild(nameSpan);
+        const metaRow = document.createElement('div');
+        metaRow.className = 'message-meta';
+        if (data.time) metaRow.appendChild(timeSpan);
+        metaRow.appendChild(nameSpan);
+
+        textSpan.className = 'message-text';
+
+        msgLine.appendChild(metaRow);
         msgLine.appendChild(textSpan);
         chatBox.appendChild(msgLine);
         chatBox.scrollTop = chatBox.scrollHeight;
@@ -973,7 +1049,8 @@
 
     function appendPrivateMessage(data) {
         const msgLine = document.createElement('div');
-        msgLine.className = 'message-line';
+        const isOwnMessage = data.user === myUsername;
+        msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
         timeSpan.className = 'timestamp';
@@ -987,8 +1064,14 @@
         const textSpan = document.createElement('span');
         textSpan.textContent = data.msg || '';
 
-        if (data.time) msgLine.appendChild(timeSpan);
-        msgLine.appendChild(nameSpan);
+        const metaRow = document.createElement('div');
+        metaRow.className = 'message-meta';
+        if (data.time) metaRow.appendChild(timeSpan);
+        metaRow.appendChild(nameSpan);
+
+        textSpan.className = 'message-text';
+
+        msgLine.appendChild(metaRow);
         msgLine.appendChild(textSpan);
         privateChatBox.appendChild(msgLine);
         privateChatBox.scrollTop = privateChatBox.scrollHeight;
@@ -1063,7 +1146,8 @@
 
     function appendMessage(data) {
         const msgLine = document.createElement('div');
-        msgLine.className = 'message-line';
+        const isOwnMessage = data.user === myUsername;
+        msgLine.className = `message-line ${isOwnMessage ? 'sent-bubble' : 'received-bubble'}`;
 
         const timeSpan = document.createElement('span');
         timeSpan.className = 'timestamp';
@@ -1086,8 +1170,14 @@
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         textSpan.innerHTML = escapedMsg.replace(urlRegex, '<a href="$1" target="_blank" style="color: #38bdf8; text-decoration: underline;">$1</a>');
 
-        if (data.time) msgLine.appendChild(timeSpan);
-        msgLine.appendChild(nameSpan);
+        const metaRow = document.createElement('div');
+        metaRow.className = 'message-meta';
+        if (data.time) metaRow.appendChild(timeSpan);
+        metaRow.appendChild(nameSpan);
+
+        textSpan.className = 'message-text';
+
+        msgLine.appendChild(metaRow);
         msgLine.appendChild(textSpan);
         chatBox.appendChild(msgLine);
         chatBox.scrollTop = chatBox.scrollHeight;
