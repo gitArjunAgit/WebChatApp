@@ -1811,6 +1811,7 @@
     socket.on('game_ended', (data) => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
+        if (window.releaseMobileControls) window.releaseMobileControls();
 
         const reason = data.reason || 'finished';
         if (reason === 'opponent_disconnected') {
@@ -1863,6 +1864,7 @@
     (function setupMobileControls() {
         const upBtn = document.getElementById('pong-up-btn');
         const downBtn = document.getElementById('pong-down-btn');
+        let activeCtrlDir = null;
 
         function emitMove(direction) {
             if (!currentGameId || !playerNumber) return;
@@ -1876,27 +1878,41 @@
         function onStart(btn, direction) {
             return function (e) {
                 e.preventDefault();
+                if (activeCtrlDir === direction) return;
                 btn.classList.add('pressed');
+                activeCtrlDir = direction;
                 emitMove(direction);
             };
         }
 
-        function onStop(btn) {
+        function onStop(btn, direction) {
             return function (e) {
                 e.preventDefault();
                 btn.classList.remove('pressed');
-                emitMove('stop');
+                if (activeCtrlDir === direction) {
+                    activeCtrlDir = null;
+                    emitMove('stop');
+                }
             };
         }
+
+        window.releaseMobileControls = function () {
+            upBtn.classList.remove('pressed');
+            downBtn.classList.remove('pressed');
+            if (activeCtrlDir !== null) {
+                activeCtrlDir = null;
+                emitMove('stop');
+            }
+        };
 
         [
             [upBtn, 'up'],
             [downBtn, 'down']
         ].forEach(function ([btn, dir]) {
             btn.addEventListener('pointerdown', onStart(btn, dir));
-            btn.addEventListener('pointerup', onStop(btn));
-            btn.addEventListener('pointercancel', onStop(btn));
-            btn.addEventListener('pointerleave', onStop(btn));
+            btn.addEventListener('pointerup', onStop(btn, dir));
+            btn.addEventListener('pointercancel', onStop(btn, dir));
+            btn.addEventListener('pointerleave', onStop(btn, dir));
             // Prevent context menu on long-press (mobile)
             btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
         });
@@ -1940,6 +1956,7 @@
     exitPongBtn.addEventListener('click', () => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
+        if (window.releaseMobileControls) window.releaseMobileControls();
 
         currentGameId = null;
         playerNumber = null;
