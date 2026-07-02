@@ -953,6 +953,60 @@
             box-shadow: 0 6px 24px rgba(239, 68, 68, 0.4);
         }
 
+        /* Mobile on-screen pong controls */
+        .pong-mobile-controls {
+            display: none;
+            justify-content: center;
+            gap: 28px;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .pong-ctrl-btn {
+            width: 86px;
+            height: 86px;
+            border-radius: 50%;
+            border: 2px solid rgba(246, 211, 101, 0.55);
+            background: linear-gradient(135deg, rgba(246, 211, 101, 0.13) 0%, rgba(27, 255, 155, 0.09) 100%);
+            color: #f6d365;
+            font-size: 2.1em;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            box-shadow: 0 0 18px rgba(246, 211, 101, 0.18);
+            transition: background 0.12s, box-shadow 0.12s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pong-ctrl-btn:active,
+        .pong-ctrl-btn.pressed {
+            background: linear-gradient(135deg, rgba(246, 211, 101, 0.38) 0%, rgba(27, 255, 155, 0.28) 100%);
+            box-shadow: 0 0 32px rgba(246, 211, 101, 0.45);
+            transform: scale(0.94);
+        }
+
+        @media (max-width: 900px) {
+            .pong-mobile-controls {
+                display: flex;
+            }
+
+            #pong-canvas {
+                max-height: 48vh;
+            }
+
+            #pong-game-container h1 {
+                font-size: 1.1em;
+                letter-spacing: 2px;
+            }
+
+            .pong-score {
+                font-size: 1.8em;
+            }
+        }
+
         .game-ended-overlay {
             position: fixed;
             top: 0;
@@ -1249,6 +1303,10 @@
                 <div id="pong-p2-name">Player 2</div>
                 <div class="pong-score" id="pong-p2-score">0</div>
             </div>
+        </div>
+        <div class="pong-mobile-controls" id="pong-mobile-controls">
+            <button class="pong-ctrl-btn" id="pong-btn-up" aria-label="Move paddle up">▲</button>
+            <button class="pong-ctrl-btn" id="pong-btn-down" aria-label="Move paddle down">▼</button>
         </div>
         <button id="exit-pong-btn">Exit Arena</button>
     </div>
@@ -1797,6 +1855,60 @@
             });
         }
     }
+
+    // Mobile on-screen control buttons
+    const pongBtnUp = document.getElementById('pong-btn-up');
+    const pongBtnDown = document.getElementById('pong-btn-down');
+
+    function emitPaddleMove(direction) {
+        if (!currentGameId || playerNumber === null) return;
+        socket.emit('paddle_move', {
+            game_id: currentGameId,
+            player_number: playerNumber,
+            direction: direction
+        });
+    }
+
+    function bindMobileBtn(btn, direction) {
+        btn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            btn.classList.add('pressed');
+            emitPaddleMove(direction);
+        }, { passive: false });
+
+        btn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            btn.classList.remove('pressed');
+            emitPaddleMove('stop');
+        }, { passive: false });
+
+        btn.addEventListener('touchcancel', () => {
+            btn.classList.remove('pressed');
+            emitPaddleMove('stop');
+        });
+
+        // Also support mouse for desktop testing of mobile layout
+        btn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            btn.classList.add('pressed');
+            emitPaddleMove(direction);
+        });
+
+        btn.addEventListener('mouseup', () => {
+            btn.classList.remove('pressed');
+            emitPaddleMove('stop');
+        });
+
+        btn.addEventListener('mouseleave', () => {
+            if (btn.classList.contains('pressed')) {
+                btn.classList.remove('pressed');
+                emitPaddleMove('stop');
+            }
+        });
+    }
+
+    bindMobileBtn(pongBtnUp, 'up');
+    bindMobileBtn(pongBtnDown, 'down');
 
     function drawGame(state) {
         // Clear canvas
