@@ -953,6 +953,62 @@
             box-shadow: 0 6px 24px rgba(239, 68, 68, 0.4);
         }
 
+        /* ── Mobile on-screen controls for Pong ── */
+        .pong-mobile-controls {
+            display: none;
+            gap: 20px;
+            justify-content: center;
+            align-items: center;
+            margin-top: 4px;
+        }
+
+        .pong-ctrl-btn {
+            width: 88px;
+            height: 88px;
+            font-size: 2.2em;
+            border-radius: 50%;
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.85) 0%, rgba(246, 211, 101, 0.65) 100%);
+            color: #fff;
+            border: 2px solid rgba(246, 211, 101, 0.45);
+            box-shadow: 0 0 22px rgba(168, 85, 247, 0.45);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            transition: transform 0.1s, box-shadow 0.15s;
+            font-family: sans-serif;
+            line-height: 1;
+        }
+
+        .pong-ctrl-btn:active,
+        .pong-ctrl-btn.pressed {
+            transform: scale(0.91);
+            box-shadow: 0 0 36px rgba(246, 211, 101, 0.7);
+            background: linear-gradient(135deg, rgba(246, 211, 101, 0.85) 0%, rgba(168, 85, 247, 0.75) 100%);
+        }
+
+        .pong-controls-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65em;
+            letter-spacing: 2px;
+            color: rgba(246, 211, 101, 0.55);
+            text-transform: uppercase;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 768px), (pointer: coarse) {
+            .pong-mobile-controls {
+                display: flex;
+            }
+            #pong-kb-hint {
+                display: none;
+            }
+        }
+
         .game-ended-overlay {
             position: fixed;
             top: 0;
@@ -1250,6 +1306,11 @@
                 <div class="pong-score" id="pong-p2-score">0</div>
             </div>
         </div>
+        <div class="pong-mobile-controls" id="pong-mobile-controls">
+            <button class="pong-ctrl-btn" id="pong-up-btn" aria-label="Move paddle up">▲</button>
+            <button class="pong-ctrl-btn" id="pong-down-btn" aria-label="Move paddle down">▼</button>
+        </div>
+        <p class="pong-controls-label" id="pong-kb-hint">↑ / W &nbsp; Move Up &nbsp;&nbsp; ↓ / S &nbsp; Move Down</p>
         <button id="exit-pong-btn">Exit Arena</button>
     </div>
 </div>
@@ -1750,6 +1811,7 @@
     socket.on('game_ended', (data) => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
+        if (window.releaseMobileControls) window.releaseMobileControls();
 
         const reason = data.reason || 'finished';
         if (reason === 'opponent_disconnected') {
@@ -1798,6 +1860,64 @@
         }
     }
 
+    // ── Mobile on-screen controls ──
+    (function setupMobileControls() {
+        const upBtn = document.getElementById('pong-up-btn');
+        const downBtn = document.getElementById('pong-down-btn');
+        let activeCtrlDir = null;
+
+        function emitMove(direction) {
+            if (!currentGameId || !playerNumber) return;
+            socket.emit('paddle_move', {
+                game_id: currentGameId,
+                player_number: playerNumber,
+                direction: direction
+            });
+        }
+
+        function onStart(btn, direction) {
+            return function (e) {
+                e.preventDefault();
+                if (activeCtrlDir === direction) return;
+                btn.classList.add('pressed');
+                activeCtrlDir = direction;
+                emitMove(direction);
+            };
+        }
+
+        function onStop(btn, direction) {
+            return function (e) {
+                e.preventDefault();
+                btn.classList.remove('pressed');
+                if (activeCtrlDir === direction) {
+                    activeCtrlDir = null;
+                    emitMove('stop');
+                }
+            };
+        }
+
+        window.releaseMobileControls = function () {
+            upBtn.classList.remove('pressed');
+            downBtn.classList.remove('pressed');
+            if (activeCtrlDir !== null) {
+                activeCtrlDir = null;
+                emitMove('stop');
+            }
+        };
+
+        [
+            [upBtn, 'up'],
+            [downBtn, 'down']
+        ].forEach(function ([btn, dir]) {
+            btn.addEventListener('pointerdown', onStart(btn, dir));
+            btn.addEventListener('pointerup', onStop(btn, dir));
+            btn.addEventListener('pointercancel', onStop(btn, dir));
+            btn.addEventListener('pointerleave', onStop(btn, dir));
+            // Prevent context menu on long-press (mobile)
+            btn.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+        });
+    })();
+
     function drawGame(state) {
         // Clear canvas
         ctx.fillStyle = '#0b0726';
@@ -1836,6 +1956,7 @@
     exitPongBtn.addEventListener('click', () => {
         document.removeEventListener('keydown', handleKeyDown);
         document.removeEventListener('keyup', handleKeyUp);
+        if (window.releaseMobileControls) window.releaseMobileControls();
 
         currentGameId = null;
         playerNumber = null;
