@@ -248,13 +248,13 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/download/tester.zip')
-def download_tester():
+@app.route('/download/ChungApp.dmg')
+def download_chungapp():
     return send_from_directory(
         os.path.join(app.root_path, 'templates'),
-        'tester.zip',
+        'ChungApp.dmg',
         as_attachment=True,
-        download_name='tester.zip'
+        download_name='ChungApp.dmg'
     )
 
 
