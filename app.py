@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, send_from_directory
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from pymongo import MongoClient
 import uuid
@@ -246,6 +246,16 @@ def get_user_by_sid(sid):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/download/tester.zip')
+def download_tester():
+    return send_from_directory(
+        os.path.join(app.root_path, 'templates'),
+        'tester.zip',
+        as_attachment=True,
+        download_name='tester.zip'
+    )
 
 
 @socketio.on('connect')
